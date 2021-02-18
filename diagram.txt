@@ -1,0 +1,14 @@
+participant "entry point
+-> main.c" as main
+participant "parser.c" as parser
+participant "scanner.c" as scanner
+participant "renderer.c" as renderer
+participant " * grammars
+ - participantsdkjaskldjaklsd
+ - arrow" as grammars
+
+main->main : read each line
+main->parser : normal arr
+;main<--parser : call parsersdkjalskjd
+grammars->grammars:trslkjd
+a->a: sdk
