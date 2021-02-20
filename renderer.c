@@ -410,10 +410,10 @@ void cal_arrow_coordinates(Area *area)
                     }
                     else if (x != from)
                     {
-                        if (arrow_connections.cons[a]->type == (L_ARROW_F))
-                            area->body.buffer[area->body.l_p][x] = ARROW_LINE_L;
-                        else
+                        if (arrow_connections.cons[a]->type == (L_RET_AR_F))
                             area->body.buffer[area->body.l_p][x] = ARROW_RET_LINE_L;
+                        else
+                            area->body.buffer[area->body.l_p][x] = ARROW_LINE_L;
                     }
                 }
                 else

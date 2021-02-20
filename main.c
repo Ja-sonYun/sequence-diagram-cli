@@ -45,7 +45,13 @@ int main(int argc, char *argv[])
     prefix = NULL;
     suffix = NULL;
 
-    printf("sequence-diagram-cli v1.0\nJa-sonYun, mail: jason@abex.dev\n");
+    bool is_text = false;
+
+    if (argc == 1)
+    {
+        printf("sequence-diagram-cli v1.1\nJa-sonYun, email: jason@abex.dev\ngithub: https://github.com/Ja-sonYun\nmy website: https://abex.dev\n");
+        return 0;
+    }
 
     for (int i = 2; i < argc; i++)
     {
@@ -59,6 +65,10 @@ int main(int argc, char *argv[])
             {
                 printf(KRED"wrong log option!\n"RESET);
             }
+        }
+        else if (!strcmp(argv[i], "al"))
+        {
+            is_text = true;
         }
         else if (!strncmp(argv[i], "prefix=", 7))
         {
@@ -87,6 +97,8 @@ int main(int argc, char *argv[])
             printf(KRED"wrong option!\n"RESET);
         }
     }
+
+    set_style(is_text);
 
     readfile(argv[1]);
 
