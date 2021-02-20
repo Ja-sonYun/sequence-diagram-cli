@@ -11,7 +11,14 @@ fi
 wget https://github.com/Ja-sonYun/sequence-diagram-cli/blob/main/seqdia\?raw\=true -P ~/.seqdia
 
 echo "\x1B[32m** chmod 755 /usr/local/bin/seqdia...\033[0m"
-`sudo chmod 755 /usr/local/bin/seqdia`
+sudo chmod 755 /usr/local/bin/seqdia
+
+if [ "$EUID" -ne 0 ]
+  then echo "Installation canceled."
+    echo "\x1B[32m** Removing temp folder ~/.seqdia\033[0m"
+    rm -rf ~/.seqdia
+  exit
+fi
 
 echo "\x1B[32m** Moving binary file to '/usr/local/bin'.\033[0m"
 mv ~/.seqdia/seqdia?raw=true /usr/local/bin/seqdia
