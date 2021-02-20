@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
     if (argc == 1)
     {
         vvv();
-        printf("sequence-diagram-cli v1.1\nJa-sonYun, email: jason@abex.dev\ngithub: https://github.com/Ja-sonYun\nmy website: https://abex.dev\n");
+        printf("sequence-diagram-cli v1.2\nJa-sonYun, email: jason@abex.dev\ngithub: https://github.com/Ja-sonYun\nmy website: https://abex.dev\n");
         return 0;
     }
 
