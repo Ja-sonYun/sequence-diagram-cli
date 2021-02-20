@@ -1,5 +1,5 @@
 #include "fetch.h"
-#define VERSION "v1.2"
+#define VERSION "v1.2.1"
 
 struct string {
     char *ptr;
