@@ -1,7 +1,7 @@
 OBJ_DIR = obj
 
 CFLAG = -c -Wall -O2 -std=c99
-OBJECTS = main.o arrow_connection.o participant.o renderer.o parser.o scanner.o
+OBJECTS = main.o arrow_connection.o participant.o renderer.o parser.o scanner.o style.o
 TARGET = seqdia
 
 ARROW_C_C = ./grammars/arrow_connection.c
@@ -10,6 +10,7 @@ RENDERER_C = ./renderer.c
 PARSER_C = ./parser.c
 SCANNER_C = ./scanner.c
 MAIN_C = ./main.c
+STYLE_C = ./style.c
 
 .PHONY: clean
 
@@ -33,6 +34,9 @@ participant.o: $(PARTICIPANT_C)
 
 scanner.o: $(SCANNER_C)
 	gcc $(CFLAG) $(SCANNER_C)
+
+style.o: $(STYLE_C)
+	gcc $(CFLAG) $(STYLE_C)
 
 clean:
 	rm -rf seqdia && rm *.o
