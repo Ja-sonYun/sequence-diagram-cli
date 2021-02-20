@@ -53,10 +53,11 @@ int main(int argc, char *argv[])
     if (argc == 1)
     {
         check_version();
-        printf("sequence-diagram-cli %s\nJa-sonYun, email: jason@abex.dev\ngithub: https://github.com/Ja-sonYun\nwebsite: https://abex.dev\n", VERSION);
+        printf("sequence-diagram-cli %s\ngithub@Ja-sonYun, email: jason@abex.dev\ngithub: https://github.com/Ja-sonYun\nwebsite: https://abex.dev\n", VERSION);
         return 0;
     }
 
+    printf("*** sequence-diagram-cli %s, github@Ja-sonYun ***\n", VERSION);
     for (int i = 2; i < argc; i++)
     {
         if (!strncmp(argv[i], "log=", 4))
@@ -105,6 +106,7 @@ int main(int argc, char *argv[])
     set_style(is_text);
 
     readfile(argv[1]);
+
 
     check_version();
 
