@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [ `whoami` != root ]; then
+    echo Please run this script as root or using sudo
+    exit
+fi
+
 if [ -d "/usr/local/bin" ]
 then
     echo "** Downloading binary file from github..."
@@ -14,7 +19,7 @@ echo "** Moving binary file to '/usr/local/bin'."
 mv ~/.seqdia/seqdia?raw=true /usr/local/bin/seqdia
 
 echo "** chmod 755 /usr/local/bin/seqdia..."
-sudo chmod 755 /usr/local/bin/seqdia
+
+chmod 755 /usr/local/bin/seqdia
 
 echo "** Installed!"
-echo "** You can test your installation with command \$( seqdia diagram.txt ) in this directory."

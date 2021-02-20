@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     if (argc == 1)
     {
         check_version();
-        printf("sequence-diagram-cli %s\ngithub@Ja-sonYun, email: jason@abex.dev\ngithub: https://github.com/Ja-sonYun\nwebsite: https://abex.dev\n", VERSION);
+        printf("sequence-diagram-cli %s\ngithub@Ja-sonYun, email: jason@abex.dev\ngithub: https://github.com/Ja-sonYun/sequence-diagram-cli\nwebsite: https://abex.dev\n", VERSION);
         return 0;
     }
 
