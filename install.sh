@@ -8,10 +8,22 @@ else
     exit 1
 fi
 
-wget https://github.com/Ja-sonYun/sequence-diagram-cli/blob/main/seqdia\?raw\=true -P ~/.seqdia
+wget https://github.com/Ja-sonYun/sequence-diagram-cli/releases/download/v1.2.1/seqdia -P ~/.seqdia
+
+CHECKSUM=($(md5sum ~/.seqdia/seqdia))
+CHECKSUMD="71ebfc64b1885086aa939dbee0ee8270"
+echo "Compare Checksum $CHECKSUMD"
+if [ "$CHECKSUM" = "$CHECKSUMD" ]; then
+    echo "PASSED"
+else
+    echo "FAILED. Please download manually."
+    echo "\x1B[32m** Removing temp folder ~/.seqdia\033[0m"
+    rm -rf ~/.seqdia
+    exit 1
+fi
 
 echo "\x1B[32m** Moving binary file to '/usr/local/bin'.\033[0m"
-sudo mv ~/.seqdia/seqdia?raw=true /usr/local/bin/seqdia
+sudo mv ~/.seqdia/seqdia /usr/local/bin/seqdia
 
 echo "\x1B[32m** chmod 755 /usr/local/bin/seqdia...\033[0m"
 sudo chmod 755 /usr/local/bin/seqdia
