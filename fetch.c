@@ -33,8 +33,6 @@ void check_version()
     struct string s;
 
     int version_size = 6;
-    char *version = calloc_s(version_size, sizeof(char));
-    bool succeed = false;
 
     if(curl) {
         init_string(&s);
@@ -49,31 +47,22 @@ void check_version()
 
         res = curl_easy_perform(curl);
 
-        char *version_st = strstr(s.ptr, "\"name\": \"v");
-        if (version_st != NULL)
+        char *version = strstr(s.ptr, "\"name\": \"v");
+        char *end = strstr(version, "\",");
+        int size = end - version - 9;
+        version += 9;
+        version[size] = '\0';
+        if (size <= version_size && size > 0 && version[0] == 'v')
         {
-            char *end = strstr(version_st, "\",");
-            if (end != NULL)
+            if (strcmp(version, VERSION))
             {
-                int size = end - version_st - 9;
-                version_st += 9;
-                version_st[size] = '\0';
-                if (size <= version_size && size > 0 && version_st[0] == 'v')
-                {
-                    strcpy(version, version_st);
-                    version[version_size] = '\0';
-                    succeed = true;
-                }
+                printf("** New version %s is released! **\nYou can update with below command,\n+--------------------------------------------------------------------------------------------------+\n| bash <(curl -s https://raw.githubusercontent.com/Ja-sonYun/sequence-diagram-cli/main/install.sh) |\n+--------------------------------------------------------------------------------------------------+\n", version);
             }
         }
-        free(s.ptr);
 
     }
 
-    if (succeed && strcmp(version, VERSION))
-    {
-        printf("** New version %s is released! **\nYou can update with below command,\n+--------------------------------------------------------------------------------------------------+\n| bash <(curl -s https://raw.githubusercontent.com/Ja-sonYun/sequence-diagram-cli/main/install.sh) |\n+--------------------------------------------------------------------------------------------------+\n", version);
-    }
+    free(s.ptr);
 
     curl_easy_cleanup(curl);
 
