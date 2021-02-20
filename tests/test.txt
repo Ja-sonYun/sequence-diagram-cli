@@ -3,21 +3,18 @@ participant User
 participant " * TODO
  - clean living room  " as todo
 participant Dev
-participant "jlksdjaklsjdlkasjdkljlksdjalkjsslkdjalksjddd" as S
 
 ; connections
-User->User: default asd
+User->User: default arrow
 User-->Dev: styled arrow
 todo->todo : "self connecting
 with
 new line"
 User->Dev : yes? sd
 User<--Dev : no
-Dev-->Dev:jjjsslkdjaslkdjdkaklsjdklasjd
 todo<--Dev: reverse arrow
 S->todo: "EEEE
 E
 EEEE
 E
 EEEE"
-S->S:aaaaeeaalksdjaklsjd
