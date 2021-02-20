@@ -7,6 +7,6 @@
 #include <stdbool.h>
 #include <curl/curl.h>
 
-char* check_version();
+void check_version();
 
 #endif

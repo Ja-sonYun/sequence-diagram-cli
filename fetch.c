@@ -1,4 +1,5 @@
 #include "fetch.h"
+#define VERSION "v1.2"
 
 struct string {
     char *ptr;
@@ -23,12 +24,11 @@ size_t writefunc(void *ptr, size_t size, size_t nmemb, struct string *s)
   return size*nmemb;
 }
 
-char* check_version()
+void check_version()
 {
     CURL *curl;
     CURLcode res;
 
-    curl_global_init(CURL_GLOBAL_DEFAULT);
     curl = curl_easy_init();
     struct string s;
 
@@ -50,24 +50,31 @@ char* check_version()
         res = curl_easy_perform(curl);
 
         char *version_st = strstr(s.ptr, "\"name\": \"v");
-        char *end = strstr(version_st, "\",");
-        int size = end - version_st - 9;
-        version_st += 9;
-        version_st[size] = '\0';
-        if (size <= version_size && size > 0 && version_st[0] == 'v')
+        if (version_st != NULL)
         {
-            strcpy(version, version_st);
-            version[version_size] = '\0';
-            succeed = true;
+            char *end = strstr(version_st, "\",");
+            if (end != NULL)
+            {
+                int size = end - version_st - 9;
+                version_st += 9;
+                version_st[size] = '\0';
+                if (size <= version_size && size > 0 && version_st[0] == 'v')
+                {
+                    strcpy(version, version_st);
+                    version[version_size] = '\0';
+                    succeed = true;
+                }
+            }
         }
+        free(s.ptr);
 
-    curl_easy_cleanup(curl);
     }
 
-    curl_global_cleanup();
+    if (succeed && strcmp(version, VERSION))
+    {
+        printf("** New version %s is released! **\nYou can update with below command,\n+--------------------------------------------------------------------------------------------------+\n| bash <(curl -s https://raw.githubusercontent.com/Ja-sonYun/sequence-diagram-cli/main/install.sh) |\n+--------------------------------------------------------------------------------------------------+\n", version);
+    }
 
-    if (succeed)
-        return version;
+    curl_easy_cleanup(curl);
 
-    return NULL;
 }
