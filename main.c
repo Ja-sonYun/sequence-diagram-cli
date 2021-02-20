@@ -9,7 +9,10 @@ void readfile(char *filename)
 
     fp = fopen(filename, "r");
     if (fp == NULL)
+    {
+        printf("file not found!\n");
         exit(0);
+    }
 
     int CUR_LINE_NUM = 0;
     while ((read = getline(&line, &len, fp)) != -1)
