@@ -1,5 +1,6 @@
 #ifndef FETCH_H
 #define FETCH_H
+#define VERSION "v1.2.1"
 
 #include <stdio.h>
 #include "mem.h"

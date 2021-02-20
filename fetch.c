@@ -1,5 +1,4 @@
 #include "fetch.h"
-#define VERSION "v1.2.1"
 
 struct string {
     char *ptr;
@@ -48,16 +47,24 @@ void check_version()
         res = curl_easy_perform(curl);
 
         char *version = strstr(s.ptr, "\"name\": \"v");
-        char *end = strstr(version, "\",");
-        int size = end - version - 9;
-        version += 9;
-        version[size] = '\0';
-        if (size <= version_size && size > 0 && version[0] == 'v')
+        if (version != NULL)
         {
-            if (strcmp(version, VERSION))
+            char *end = strstr(version, "\",");
+            if (end != NULL)
             {
-                printf("** New version %s is released! **\nYou can update with below command,\n+--------------------------------------------------------------------------------------------------+\n| bash <(curl -s https://raw.githubusercontent.com/Ja-sonYun/sequence-diagram-cli/main/install.sh) |\n+--------------------------------------------------------------------------------------------------+\n", version);
+                int size = end - version - 9;
+                version += 9;
+                version[size] = '\0';
+                if (size <= version_size && size > 0 && version[0] == 'v')
+                {
+                    if (strcmp(version, VERSION))
+                    {
+                        printf("** New version %s is released! **\nYou can update with below command,\n+--------------------------------------------------------------------------------------------------+\n| bash <(curl -s https://raw.githubusercontent.com/Ja-sonYun/sequence-diagram-cli/main/install.sh) |\n+--------------------------------------------------------------------------------------------------+\n", version);
+                    }
+                }
+
             }
+
         }
 
     }
