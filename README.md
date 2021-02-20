@@ -3,7 +3,7 @@ Draw seqence diagram from terminal.
 
 ## Installation
 ```
-$ ~/sequence-diagram-cli > sh ./install.sh
+$ ~/sequence-diagram-cli > bash <(curl -s https://raw.githubusercontent.com/Ja-sonYun/sequence-diagram-cli/main/install.sh)
 $ ~/sequence-diagram-cli > seqdia 'YOUR_SEQUENCE_DIAGRAM_FILE'
 $ ~/sequence-diagram-cli > seqdia 'YOUR_SEQUENCE_DIAGRAM_FILE' prefix='// ' suffix='|' al
 
