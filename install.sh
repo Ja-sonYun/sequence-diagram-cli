@@ -22,6 +22,17 @@ else
     exit 1
 fi
 
+
+if [ -f "/usr/local/bin/seqdia" ]; then
+    CHECKSUMO=($(md5sum /usr/local/bin/seqdia))
+    if [ "$CHECKSUMD" = "$CHECKSUMO" ]; then
+        echo "Nothing changed."
+        exit 1
+    else
+        echo "Updating..."
+    fi
+fi
+
 echo "\x1B[32m** Moving binary file to '/usr/local/bin'.\033[0m"
 sudo mv ~/.seqdia/seqdia /usr/local/bin/seqdia
 
