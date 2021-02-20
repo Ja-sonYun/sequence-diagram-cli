@@ -1,4 +1,5 @@
 #include "main.h"
+#define VERSION "v1.2"
 
 void readfile(char *filename)
 {
@@ -41,6 +42,15 @@ void readfile(char *filename)
         free(line);
 }
 
+void vvv()
+{
+    char* version = check_version();
+    if (strcmp(version, VERSION))
+    {
+        printf("** New version %s is released! **\nYou can update with below command,\n+--------------------------------------------------------------------------------------------------+\n| bash <(curl -s https://raw.githubusercontent.com/Ja-sonYun/sequence-diagram-cli/main/install.sh) |\n+--------------------------------------------------------------------------------------------------+\n", version);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     SHOW_LOG = 0;
@@ -52,6 +62,7 @@ int main(int argc, char *argv[])
 
     if (argc == 1)
     {
+        vvv();
         printf("sequence-diagram-cli v1.1\nJa-sonYun, email: jason@abex.dev\ngithub: https://github.com/Ja-sonYun\nmy website: https://abex.dev\n");
         return 0;
     }
@@ -104,6 +115,8 @@ int main(int argc, char *argv[])
     set_style(is_text);
 
     readfile(argv[1]);
+
+    vvv();
 
     return 0;
 }
