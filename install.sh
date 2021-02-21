@@ -14,8 +14,9 @@ CHECKSUM=""
 if command -v md5sum file &> /dev/null
 then
     CHECKSUM=($(md5sum ~/.seqdia/seqdia))
-elif command -v md5 file &> /dev/null
-then
+fi
+
+if [ "$CHECKSUM" = "" ]; then
     CHECKSUM=($(md5 ~/.seqdia/seqdia))
 fi
 
