@@ -403,14 +403,16 @@ void cal_arrow_coordinates(Area *area)
                         area->body.buffer[area->body.l_p][x] = ARROW_ORIGIN_L;
                     else if (x == from + 1)
                     {
-                        if (arrow_connections.cons[a]->type == (L_RET_AR_F))
+                        if (arrow_connections.cons[a]->type == (L_RET_AR_F)
+                                || arrow_connections.cons[a]->type == (R_RET_AR_F))
                             area->body.buffer[area->body.l_p][x] = ARROW_RET_L;
                         else
                             area->body.buffer[area->body.l_p][x] = ARROW_NORMAL_L;
                     }
                     else if (x != from)
                     {
-                        if (arrow_connections.cons[a]->type == (L_RET_AR_F))
+                        if (arrow_connections.cons[a]->type == (L_RET_AR_F)
+                                || arrow_connections.cons[a]->type == (R_RET_AR_F))
                             area->body.buffer[area->body.l_p][x] = ARROW_RET_LINE_L;
                         else
                             area->body.buffer[area->body.l_p][x] = ARROW_LINE_L;
@@ -422,14 +424,16 @@ void cal_arrow_coordinates(Area *area)
                         area->body.buffer[area->body.l_p][x] = ARROW_ORIGIN_R;
                     else if (x == to)
                     {
-                        if (arrow_connections.cons[a]->type == (R_RET_AR_F))
+                        if (arrow_connections.cons[a]->type == (L_RET_AR_F)
+                                || arrow_connections.cons[a]->type == (R_RET_AR_F))
                             area->body.buffer[area->body.l_p][x-1] = ARROW_RET_R;
                         else
                             area->body.buffer[area->body.l_p][x-1] = ARROW_NORMAL_R;
                     }
                     else
                     {
-                        if (arrow_connections.cons[a]->type == (R_RET_AR_F))
+                        if (arrow_connections.cons[a]->type == (L_RET_AR_F)
+                                || arrow_connections.cons[a]->type == (R_RET_AR_F))
                             area->body.buffer[area->body.l_p][x] = ARROW_RET_LINE_R;
                         else
                             area->body.buffer[area->body.l_p][x] = ARROW_LINE_R;
