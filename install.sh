@@ -9,16 +9,7 @@ else
 fi
 
 wget https://github.com/Ja-sonYun/sequence-diagram-cli/releases/download/v1.2.1/seqdia -P ~/.seqdia
-CHECKSUM=""
-
-if command -v md5sum file &> /dev/null
-then
-    CHECKSUM=($(md5sum ~/.seqdia/seqdia))
-fi
-
-if [ "$CHECKSUM" = "" ]; then
-    CHECKSUM=($(md5 ~/.seqdia/seqdia))
-fi
+CHECKSUM=`md5 ~/.seqdia/seqdia | awk '{ print $4 }'`
 
 if [ "$CHECKSUM" != "" ]; then
     CHECKSUMD="71ebfc64b1885086aa939dbee0ee8270"
