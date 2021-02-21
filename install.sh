@@ -9,27 +9,39 @@ else
 fi
 
 wget https://github.com/Ja-sonYun/sequence-diagram-cli/releases/download/v1.2.1/seqdia -P ~/.seqdia
+CHECKSUM=""
 
-CHECKSUM=($(md5sum ~/.seqdia/seqdia))
-CHECKSUMD="71ebfc64b1885086aa939dbee0ee8270"
-echo "Compare Checksum $CHECKSUMD"
-if [ "$CHECKSUM" = "$CHECKSUMD" ]; then
-    echo "PASSED"
-else
-    echo "FAILED. Please download manually."
-    echo "\x1B[32m** Removing temp folder ~/.seqdia\033[0m"
-    rm -rf ~/.seqdia
-    exit 1
+if command -v md5sum file &> /dev/null
+then
+    CHECKSUM=($(md5sum ~/.seqdia/seqdia))
+elif command -v md5 file &> /dev/null
+then
+    CHECKSUM=($(md5 ~/.seqdia/seqdia))
 fi
 
-
-if [ -f "/usr/local/bin/seqdia" ]; then
-    CHECKSUMO=($(md5sum /usr/local/bin/seqdia))
-    if [ "$CHECKSUMD" = "$CHECKSUMO" ]; then
-        echo "Nothing changed."
-        exit 1
+if [ "$CHECKSUM" != "" ]; then
+    CHECKSUMD="71ebfc64b1885086aa939dbee0ee8270"
+    echo "Compare Checksum $CHECKSUMD"
+    if [ "$CHECKSUM" = "$CHECKSUMD" ]; then
+        echo "PASSED"
     else
-        echo "Updating..."
+        echo "FAILED. Please download manually."
+        echo "\x1B[32m** Removing temp folder ~/.seqdia\033[0m"
+        rm -rf ~/.seqdia
+        exit 1
+    fi
+
+
+    if [ -f "/usr/local/bin/seqdia" ]; then
+        CHECKSUMO=($(md5sum /usr/local/bin/seqdia))
+        if [ "$CHECKSUMD" = "$CHECKSUMO" ]; then
+            echo "Nothing changed."
+            echo "\x1B[32m** Removing temp folder ~/.seqdia\033[0m"
+            rm -rf ~/.seqdia
+            exit 1
+        else
+            echo "Updating..."
+        fi
     fi
 fi
 
