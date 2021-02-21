@@ -1,0 +1,17 @@
+A->B: sdjakls
+B->A: alskjdka
+A-->B: aksld
+B-->A: asldkj
+A->A: sdkl
+B->B:sdklajd
+A-->A:aklsdj
+B-->B:aslkdjkal
+; po
+A<-B: sdjakls
+B<-A: alskjdka
+A<--B: aksld
+B<--A: asldkj
+A<-A: sdkl
+B<-B:sdklajd
+A<--A:aklsdj
+B<--B:aslkdjkal
