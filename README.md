@@ -1,6 +1,6 @@
 # sequence-diagram-cli
 Draw seqence diagram from terminal.    
-Korean and Japanese character take 2 spaces. In terminal it works pretty well.
+Each Korean and Japanese characters take 2 spaces, In terminal it works pretty well like below.
 
 ![example image](https://github.com/Ja-sonYun/sequence-diagram-cli/blob/main/example.png?raw=true)
 
