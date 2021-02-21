@@ -59,7 +59,7 @@ void check_version()
                 {
                     if (strcmp(version, VERSION))
                     {
-                        printf("** New version %s is released! **\nYou can update with below command,\n+--------------------------------------------------------------------------------------------------+\n| bash <(curl -s https://raw.githubusercontent.com/Ja-sonYun/sequence-diagram-cli/main/install.sh) |\n+--------------------------------------------------------------------------------------------------+\n", version);
+                        printf("** New version %s is released! **\nYou can update with below command,\n+-----------------------------------------------------------------------------------------+\n| wget -qO - https://github.com/Ja-sonYun/sequence-diagram-cli/raw/main/install.sh | bash |\n+-----------------------------------------------------------------------------------------+\n", version);
                     }
                 }
 
