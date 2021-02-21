@@ -8,11 +8,20 @@ else
     exit 1
 fi
 
-wget https://github.com/Ja-sonYun/sequence-diagram-cli/releases/download/v1.2.3/seqdia -P ~/.seqdia
+D=`uname -a | awk '{print $1}'`
+if [ "$D" = "Darwin" ]; then
+    wget https://github.com/Ja-sonYun/sequence-diagram-cli/releases/download/v1.2.3/Darwin_seqdia -P ~/.seqdia
+    mv ~/.seqdia/Darwin_seqdia ~/.seqdia/seqdia
+    CHECKSUMD="8546e54e3ad18ba445efef00fa74e7bd"
+elif ["$D" = "Linux"]; then
+    wget https://github.com/Ja-sonYun/sequence-diagram-cli/releases/download/v1.2.3/Linux_seqdia -P ~/.seqdia
+    mv ~/.seqdia/Linux_seqdia ~/.seqdia/seqdia
+    CHECKSUMD="e7f36c4e9c0337a02e6b57d53a24fe9"
+fi
+
 CHECKSUM=`md5 ~/.seqdia/seqdia | awk '{ print $4 }'`
 
 if [ "$CHECKSUM" != "" ]; then
-    CHECKSUMD="8546e54e3ad18ba445efef00fa74e7bd"
     echo "Compare Checksum $CHECKSUMD"
     if [ "$CHECKSUM" = "$CHECKSUMD" ]; then
         echo "PASSED"
