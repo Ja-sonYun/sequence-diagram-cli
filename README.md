@@ -1,8 +1,8 @@
 # sequence-diagram-cli
 Draw seqence diagram from terminal.    
 Each Korean and Japanese characters take 2 spaces, In terminal it works pretty well like below.
-
-![example image](https://github.com/Ja-sonYun/sequence-diagram-cli/blob/main/example.png?raw=true)
+ 
+<img src="https://github.com/Ja-sonYun/sequence-diagram-cli/blob/main/example.png?raw=true" height="790">
 
 ## Installation
  `wget -qO - https://github.com/Ja-sonYun/sequence-diagram-cli/raw/main/install.sh | bash` 
