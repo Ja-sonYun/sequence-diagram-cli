@@ -1,6 +1,7 @@
 #ifndef SPLIT_H
 #define SPLIT_H
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include "mem.h"
 #include "terminal.h"

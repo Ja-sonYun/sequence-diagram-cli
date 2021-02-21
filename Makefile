@@ -1,6 +1,7 @@
 OBJ_DIR = obj
 
-CFLAG = -c -Wall -O2 -std=c99
+# TODO use other func instead of 'strdup'
+CFLAG = -c -Wall -O2 # std=c99
 OBJECTS = main.o arrow_connection.o participant.o renderer.o parser.o scanner.o style.o fetch.o
 TARGET = seqdia
 
