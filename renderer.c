@@ -25,22 +25,46 @@ Pos get_word_size(char *word, int length)
 {
     Pos w_s = { .x = 0, .y = 1 };
     int wxs = 0;
+    int g_c = 0;
+    int g_c_y = 0;
     for (int i = 0; i < length; i++) // 3, 4, 3
     {
         if (word[i] == '\n')
         {
             if (w_s.x < wxs) // 3>0 |
                 w_s.x = wxs;
+            if (g_c_y < g_c)
+                g_c_y = g_c;
+            g_c = 0;
             wxs = 0;
             w_s.y++;
         }
         else
         {
-            wxs++;
+#if GLOBAL_WS == 3
+            if (word[i] >> 7 && word[i+1] >> 7 && word[i+2])
+            {
+                g_c++;
+                i += 2;
+            }
+#elif GLOBAL_WS == 2
+            if (word[i] >> 7 && word[i+1] >> 7)
+            {
+                g_c++;
+                i += 1;
+            }
+#endif
+            else
+            {
+                wxs++;
+            }
         }
     }
     if (w_s.x == 0 || w_s.x < wxs)
         w_s.x = wxs;
+    if (g_c_y == 0 || g_c_y < g_c)
+        g_c_y = g_c;
+    w_s.x = w_s.x + g_c_y * 2;
     return w_s;
 }
 
@@ -179,25 +203,56 @@ void add_participants_to_buffer(Area* area)
         y = area->header.participants[m].from.y + 1 + PARTICIPANT_TOP_GAP;
         x = area->header.participants[m].from.x + 1 + PARTICIPANT_LEFT_GAP;
         char *c;
+        char *tc;
+        int g_c = 0;
         for (t = 0; t < participants.members[m]->name->length; t++)
         {
             if (participants.members[m]->name->string[t] == '\n')
             {
+                tc = area->header.buffer[y][x + g_c + PARTICIPANT_LEFT_GAP];
+                if (g_c > 0 && tc[0] != ' ')
+                {
+                    char *n = (char*)malloc(g_c * sizeof(char) + 1);
+                    memset(&n[0], '\b', g_c);
+                    memcpy(&n[g_c], tc, strlen(tc)+1);
+                    area->header.buffer[y][x + g_c + PARTICIPANT_LEFT_GAP] = n;
+                    g_c = 0;
+                }
                 y++;
                 x = area->header.participants[m].from.x + 1 + PARTICIPANT_LEFT_GAP;
             }
             else
             {
 #ifdef UTF_SUPPORT
-                c = (char*)malloc_s(sizeof(char)*2);
-                c[1] = '\0';
-                c[0] = participants.members[m]->name->string[t];
+                if (participants.members[m]->name->string[t] >> 7)
+                {
+                    c = (char*)malloc_s(sizeof(char)*4);
+                    c[4] = '\0';
+                    /* c[4] = ''; */
+                    memcpy(&c[0], &participants.members[m]->name->string[t], 3);
+                    t += 2;
+                    g_c++;
+                }
+                else
+                {
+                    c = (char*)malloc_s(sizeof(char)*2);
+                    c[1] = '\0';
+                    c[0] = participants.members[m]->name->string[t];
+                }
                 area->header.buffer[y][x] = c;
 #else
                 area->header.buffer[y][x] = participants.members[m]->name->string[t];
 #endif
                 x++;
             }
+        }
+        tc = area->header.buffer[y][x + g_c + PARTICIPANT_LEFT_GAP];
+        if (g_c > 0 && tc[0] != ' ')
+        {
+            char *n = (char*)malloc(g_c * sizeof(char) + 1);
+            memset(&n[0], '\b', g_c);
+            memcpy(&n[g_c], tc, strlen(tc)+1);
+            area->header.buffer[y][x + g_c + PARTICIPANT_LEFT_GAP] = n;
         }
     }
 }
@@ -518,8 +573,10 @@ void add_arrow_messages(Area *area)
     int a, x = 0, y;
     bool print_at_middle = false;
     char *c;
+    int dir;
     for (a = 0; a < arrow_connections.cons_num; a++)
     {
+        int g_c = 0;
         print_at_middle = false;
         if (abs(area->body.arrow_defs[a].from.x - area->body.arrow_defs[a].to.x) - 4 > area->body.arrow_defs[a].size.x)
         {
@@ -531,6 +588,15 @@ void add_arrow_messages(Area *area)
         {
             if (arrow_connections.cons[a]->content[w] == '\n')
             {
+                c = area->body.buffer[area->body.arrow_defs[a].from.y - y][dir + 1 + x + g_c];
+                if (g_c > 0 && c[0] == ' ')
+                {
+                    char *n = (char*)malloc(g_c * sizeof(char) + 1);
+                    memset(&n[0], '\b', g_c);
+                    memcpy(&n[g_c], c, strlen(c)+1);
+                    area->body.buffer[area->body.arrow_defs[a].from.y - y][dir + 1 + x + g_c + 1] = n;
+                    g_c = 0;
+                }
                 y--;
                 if (print_at_middle)
                     x = (abs(area->body.arrow_defs[a].from.x - area->body.arrow_defs[a].to.x) / 2) - (area->body.arrow_defs[a].size.x / 2) - 2;
@@ -539,17 +605,37 @@ void add_arrow_messages(Area *area)
             }
             else
             {
-                int dir = area->body.arrow_defs[a].from.x;
+                dir = area->body.arrow_defs[a].from.x;
                 if (dir > area->body.arrow_defs[a].to.x)
                     dir = area->body.arrow_defs[a].to.x;
                 x++;
 #ifdef UTF_SUPPORT
-                c = (char*)malloc_s(sizeof(char)*2);
-                c[1] = '\0';
-                c[0] = arrow_connections.cons[a]->content[w];
+                if (arrow_connections.cons[a]->content[w] >> 7)
+                {
+                    c = (char*)malloc_s(sizeof(char)*4);
+                    c[4] = '\0';
+                    /* c[4] = ''; */
+                    memcpy(&c[0], &arrow_connections.cons[a]->content[w], 3);
+                    w += 2;
+                    g_c++;
+                }
+                else
+                {
+                    c = (char*)malloc_s(sizeof(char)*2);
+                    c[1] = '\0';
+                    c[0] = arrow_connections.cons[a]->content[w];
+                }
                 area->body.buffer[area->body.arrow_defs[a].from.y - y][dir + 1 + x] = c;
 #endif
             }
+        }
+        c = area->body.buffer[area->body.arrow_defs[a].from.y - y][dir + 1 + x + g_c];
+        if (g_c > 0 && c[0] == ' ')
+        {
+            char *n = (char*)malloc(g_c * sizeof(char) + 1);
+            memset(&n[0], '\b', g_c);
+            memcpy(&n[g_c], c, strlen(c)+1);
+            area->body.buffer[area->body.arrow_defs[a].from.y - y][dir + 1 + x + g_c + 1] = n;
         }
         y = 0;
         x = 0;

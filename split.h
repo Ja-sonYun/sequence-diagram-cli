@@ -6,6 +6,8 @@
 #include "mem.h"
 #include "terminal.h"
 
+#define GLOBAL_WS 3
+
 #define SET_WORD_TYPE_AND_RET(word, thistype) \
     int string_size = strlen(word->string); \
     if (!word->init && string_size) \

@@ -10,9 +10,9 @@ fi
 
 D=`uname -a | awk '{print $1}'`
 if [ "$D" = "Darwin" ]; then
-    wget https://github.com/Ja-sonYun/sequence-diagram-cli/releases/download/v1.2.3/Darwin_seqdia -P ~/.seqdia
+    wget https://github.com/Ja-sonYun/sequence-diagram-cli/releases/download/v1.3/Darwin_seqdia -P ~/.seqdia
     mv ~/.seqdia/Darwin_seqdia ~/.seqdia/seqdia
-    CHECKSUMD="9fc546f09bf24a1dfd51e22f44417236"
+    CHECKSUMD="19ed3926bcb93f64af80e10ca7b73567"
 elif [ "$D" = "Linux" ]; then
     echo "Clone repository..."
     git clone https://github.com/Ja-sonYun/sequence-diagram-cli.git ~/.seqdia
@@ -25,6 +25,10 @@ elif [ "$D" = "Linux" ]; then
     echo "remove temp folder"
     rm -rf ~/.seqdia
     echo "Installed!"
+    exit 1
+else
+    echo "This architecture does not supported!"
+    echo "Download source file from my github, and please compile yourself."
     exit 1
 fi
 
