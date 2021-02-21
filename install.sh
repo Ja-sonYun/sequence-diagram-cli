@@ -8,11 +8,11 @@ else
     exit 1
 fi
 
-wget https://github.com/Ja-sonYun/sequence-diagram-cli/releases/download/v1.2.1/seqdia -P ~/.seqdia
+wget https://github.com/Ja-sonYun/sequence-diagram-cli/releases/download/v1.2.2/seqdia -P ~/.seqdia
 CHECKSUM=`md5 ~/.seqdia/seqdia | awk '{ print $4 }'`
 
 if [ "$CHECKSUM" != "" ]; then
-    CHECKSUMD="71ebfc64b1885086aa939dbee0ee8270"
+    CHECKSUMD="902b915eb55b65b4e5f66f06b686d1fc"
     echo "Compare Checksum $CHECKSUMD"
     if [ "$CHECKSUM" = "$CHECKSUMD" ]; then
         echo "PASSED"
