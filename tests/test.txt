@@ -1,20 +1,17 @@
-; participants
-participant User
-participant " * TODO
- - clean living room  " as todo
-participant Dev
-
-; connections
-User->User: default arrow
-User-->Dev: styled arrow
-todo->todo : "self connecting
-with
-new line"
-User->Dev : yes? sd
-User<--Dev : no
-todo<--Dev: reverse arrow
-S->todo: "EEEE
-E
-EEEE
-E
-EEEE"
+A->B: sdjakls
+B->A: alskjdka
+A-->B: aksld
+B-->A: asldkj
+A->A: sdkl
+B->B:sdklajd
+A-->A:aklsdj
+B-->B:aslkdjkal
+; po
+A<-B: sdjakls
+B<-A: alskjdka
+A<--B: aksld
+B<--A: asldkj
+A<-A: sdkl
+B<-B:sdklajd
+A<--A:aklsdj
+B<--B:aslkdjkal
