@@ -56,7 +56,8 @@ else
     exit 1
 fi
 
-if [ -x "/usr/local/bin/seqdia" ]
+CHECKSUM=`md5 /usr/local/bin/seqdia | awk '{ print $4 }'`
+if [ -x "/usr/local/bin/seqdia"  ] || [ "$CHECKSUM" = "$CHECKSUMD" ];
 then
     echo "\x1B[32m** Installed!\033[0m"
 else
