@@ -212,7 +212,7 @@ void add_participants_to_buffer(Area* area)
                 tc = area->header.buffer[y][x + g_c + PARTICIPANT_LEFT_GAP];
                 if (g_c > 0 && tc[0] != ' ')
                 {
-                    char *n = (char*)malloc(g_c * sizeof(char) + 1);
+                    char *n = (char*)malloc_s(g_c * sizeof(char));
                     memset(&n[0], '\b', g_c);
                     memcpy(&n[g_c], tc, strlen(tc)+1);
                     area->header.buffer[y][x + g_c + PARTICIPANT_LEFT_GAP] = n;
@@ -249,7 +249,7 @@ void add_participants_to_buffer(Area* area)
         tc = area->header.buffer[y][x + g_c + PARTICIPANT_LEFT_GAP];
         if (g_c > 0 && tc[0] != ' ')
         {
-            char *n = (char*)malloc(g_c * sizeof(char) + 1);
+            char *n = (char*)malloc_s(g_c * sizeof(char));
             memset(&n[0], '\b', g_c);
             memcpy(&n[g_c], tc, strlen(tc)+1);
             area->header.buffer[y][x + g_c + PARTICIPANT_LEFT_GAP] = n;
@@ -591,7 +591,7 @@ void add_arrow_messages(Area *area)
                 c = area->body.buffer[area->body.arrow_defs[a].from.y - y][dir + 1 + x + g_c];
                 if (g_c > 0 && c[0] == ' ')
                 {
-                    char *n = (char*)malloc(g_c * sizeof(char) + 1);
+                    char *n = (char*)malloc_s(g_c * sizeof(char));
                     memset(&n[0], '\b', g_c);
                     memcpy(&n[g_c], c, strlen(c)+1);
                     area->body.buffer[area->body.arrow_defs[a].from.y - y][dir + 1 + x + g_c + 1] = n;
@@ -632,7 +632,7 @@ void add_arrow_messages(Area *area)
         c = area->body.buffer[area->body.arrow_defs[a].from.y - y][dir + 1 + x + g_c];
         if (g_c > 0 && c[0] == ' ')
         {
-            char *n = (char*)malloc(g_c * sizeof(char) + 1);
+            char *n = (char*)malloc_s(g_c * sizeof(char));
             memset(&n[0], '\b', g_c);
             memcpy(&n[g_c], c, strlen(c)+1);
             area->body.buffer[area->body.arrow_defs[a].from.y - y][dir + 1 + x + g_c + 1] = n;

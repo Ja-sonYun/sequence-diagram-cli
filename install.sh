@@ -10,9 +10,9 @@ fi
 
 D=`uname -a | awk '{print $1}'`
 if [ "$D" = "Darwin" ]; then
-    wget https://github.com/Ja-sonYun/sequence-diagram-cli/releases/download/v1.3/Darwin_seqdia -P ~/.seqdia
+    wget https://github.com/Ja-sonYun/sequence-diagram-cli/releases/download/v1.3.1/Darwin_seqdia -P ~/.seqdia
     mv ~/.seqdia/Darwin_seqdia ~/.seqdia/seqdia
-    CHECKSUMD="19ed3926bcb93f64af80e10ca7b73567"
+    CHECKSUMD="1130adf11143760d73c823eaf820c9f7"
 elif [ "$D" = "Linux" ]; then
     echo "Clone repository..."
     git clone https://github.com/Ja-sonYun/sequence-diagram-cli.git ~/.seqdia
