@@ -227,8 +227,7 @@ void add_participants_to_buffer(Area* area)
                 if (participants.members[m]->name->string[t] >> 7)
                 {
                     c = (char*)malloc_s(sizeof(char)*4);
-                    c[4] = '\0';
-                    /* c[4] = ''; */
+                    c[3] = '\0';
                     memcpy(&c[0], &participants.members[m]->name->string[t], 3);
                     t += 2;
                     g_c++;
@@ -613,8 +612,7 @@ void add_arrow_messages(Area *area)
                 if (arrow_connections.cons[a]->content[w] >> 7)
                 {
                     c = (char*)malloc_s(sizeof(char)*4);
-                    c[4] = '\0';
-                    /* c[4] = ''; */
+                    c[3] = '\0';
                     memcpy(&c[0], &arrow_connections.cons[a]->content[w], 3);
                     w += 2;
                     g_c++;
