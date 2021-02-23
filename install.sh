@@ -17,7 +17,7 @@ elif [ "$D" = "Linux" ]; then
     echo "Clone repository..."
     git clone https://github.com/Ja-sonYun/sequence-diagram-cli.git ~/.seqdia
     echo "installing dependencies..."
-    apt-get install libcurl4-gnutls-dev -y
+    sudo apt-get install libcurl4-gnutls-dev -y
     echo "running make"
     make -C ~/.seqdia
     echo "move binary to /usr/local/bin"
