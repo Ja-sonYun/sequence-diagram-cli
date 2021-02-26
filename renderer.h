@@ -1,6 +1,5 @@
 #ifndef COMPILER_H
 #define COMPILER_H
-#endif
 
 #include "parser.h"
 #include "style.h"
@@ -105,3 +104,4 @@ static inline void _debug_header_(Area *area)
     printf("xpos -> x: %d, y: %d\n", area->header.pos.x, area->header.pos.y);
 }
 
+#endif
