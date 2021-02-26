@@ -4,6 +4,8 @@ Each Korean and Japanese characters take 2 spaces, In terminal it works pretty w
  
 <img src="https://github.com/Ja-sonYun/sequence-diagram-cli/blob/main/example.png?raw=true" height="790">
 
+**You can also customize styles by editing style.h.**
+
 ## Installation
  `wget -qO - https://github.com/Ja-sonYun/sequence-diagram-cli/raw/main/install.sh | bash` 
 ```
@@ -169,7 +171,6 @@ messageee"
 ee <- ee: "
   you can't use like this" // when using new line, you should add 1 character to first line at least. I'll fix this soon.
 ```
-You can also customize styles by editing style.h.
 
 ### TODO
  - note
