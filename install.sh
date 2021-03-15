@@ -12,7 +12,7 @@ D=`uname -a | awk '{print $1}'`
 if [ "$D" = "Darwin" ]; then
     wget https://github.com/Ja-sonYun/sequence-diagram-cli/releases/download/v1.3.4/Darwin_seqdia -P ~/.seqdia
     mv ~/.seqdia/Darwin_seqdia ~/.seqdia/seqdia
-    CHECKSUMD="43c081ef5521c39c6e1d6a0dd129dd5d"
+    CHECKSUMD="d9f4cfc86a732a838b9686df30349155"
 elif [ "$D" = "Linux" ]; then
     echo "Clone repository..."
     git clone https://github.com/Ja-sonYun/sequence-diagram-cli.git ~/.seqdia
