@@ -14,6 +14,11 @@ static inline void watch_compile_error(int size)
 // EP
 Words* split(char *line)
 {
+	if (line[0] == '"')
+	{
+		printf(" * you may have empty line that end with ` \" `\n");
+		return NULL; // raise error
+	}
     max_call_lim = 0;
     static bool nl = false;
     static bool wrapped = false;
