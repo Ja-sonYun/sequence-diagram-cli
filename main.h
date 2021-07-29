@@ -6,5 +6,6 @@
 int SHOW_LOG;
 char *prefix;
 char *suffix;
+bool printRaw;
 
 #include "renderer.h"

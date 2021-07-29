@@ -663,12 +663,16 @@ void render()
         l += strlen(suffix);
 
     char a[l];
-    memset(a, '=', l);
-    a[l] = '\0';
-    printf(KGRN"%s\n"RESET, a);
+    if (!printRaw) {
+        memset(a, '=', l);
+        a[l] = '\0';
+        printf(KGRN"%s\n"RESET, a);
+    }
 
     print_header(new_area);
     print_body(new_area);
 
-    printf(KGRN"%s\n"RESET, a);
+    if (!printRaw) {
+        printf(KGRN"%s\n"RESET, a);
+    }
 }

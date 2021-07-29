@@ -12,10 +12,12 @@ Korean and Japanese(which takes two spaces by character in terminal) will looks 
 Usage
 
 $ ~/sequence-diagram-cli > seqdia 'YOUR_SEQUENCE_DIAGRAM_FILE'
-$ ~/sequence-diagram-cli > seqdia 'YOUR_SEQUENCE_DIAGRAM_FILE' prefix='// ' suffix='|' al
+$ ~/sequence-diagram-cli > seqdia 'YOUR_SEQUENCE_DIAGRAM_FILE' prefix='// ' suffix='|' al raw
 
 v1.1
 // with ' al ' option will draw sequence diagram in pure character not utf-8.
+
+// with ' raw ' the surrounding lines will not be printed
 
 //example
 $ ~/sequence-diagram-cli > seqdia tests/test.txt

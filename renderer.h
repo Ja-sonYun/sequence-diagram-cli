@@ -7,6 +7,7 @@
 
 extern char *prefix;
 extern char *suffix;
+extern bool printRaw;
 
 #define GET_LINE_M(from, to) \
     (to - from) / 2 + from
