@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
 
     prefix = NULL;
     suffix = NULL;
+    printRaw = false;
 
     bool is_text = false;
 
@@ -75,6 +76,10 @@ int main(int argc, char *argv[])
         else if (!strcmp(argv[i], "al"))
         {
             is_text = true;
+        }
+        else if (!strcmp(argv[i], "raw"))
+        {
+            printRaw = true;
         }
         else if (!strncmp(argv[i], "prefix=", 7))
         {
