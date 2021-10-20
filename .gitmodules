@@ -1,0 +1,3 @@
+[submodule "seqdia-python-binding"]
+	path = seqdia-python-binding
+	url = https://github.com/Ja-sonYun/seqdia-python-binding.git
