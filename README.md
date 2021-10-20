@@ -6,6 +6,15 @@ Korean and Japanese(which takes two spaces by character in terminal) will looks 
 
 **You can also customize styles by editing style.h.**
 
+## Use from python
+```
+cd seqdia-python-binding
+python setup.py build
+python setup.py install
+python -c "import seqdia"
+```
+[more details](https://github.com/Ja-sonYun/seqdia-python-binding)
+
 ## Installation
  `wget -qO - https://github.com/Ja-sonYun/sequence-diagram-cli/raw/main/install.sh | bash` 
 ```
