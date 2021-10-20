@@ -8,7 +8,8 @@ Korean and Japanese(which takes two spaces by character in terminal) will looks 
 
 ## Use from python
 ```
-cd seqdia-python-binding
+git clone --recurse-submodules https://github.com/Ja-sonYun/sequence-diagram-cli.git
+cd sequence-diagram-cli/seqdia-python-binding
 python setup.py build
 python setup.py install
 python -c "import seqdia"
