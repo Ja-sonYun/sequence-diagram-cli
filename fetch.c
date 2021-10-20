@@ -1,3 +1,4 @@
+#ifdef CHECK_UPDATE
 #include "fetch.h"
 
 struct string {
@@ -75,3 +76,4 @@ void check_version()
     curl_easy_cleanup(curl);
 
 }
+#endif

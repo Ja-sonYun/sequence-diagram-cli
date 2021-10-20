@@ -144,6 +144,10 @@ bool parse(Words *words, int line_num)
         check_is_arrow(words))
         return true;
 
+#ifdef PYTHON_BINDING
+    failed_at = line_num;
+#else
     printf(KRED"**** PARSE FAILED at line %d ****\n"RESET, line_num);
+#endif
     return false;
 }

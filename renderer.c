@@ -1,5 +1,48 @@
 #include "renderer.h"
 
+void push_to_buf(char *format, char *ref_val)
+{
+#ifdef PYTHON_BINDING
+    // expect that ref_val is str, therefore we will not use format at here
+
+    int ref_val_len = strlen(ref_val);
+    if (buffer_size + ref_val_len > LINE_BUF_CHUNK * chunk_size - LINE_BUF_PADDING)
+    {
+        // increase chunk
+        chunk_size++;
+        size_t new_size = LINE_BUF_CHUNK * chunk_size * sizeof(char);
+        size_t old_size = LINE_BUF_CHUNK * (chunk_size - 1) * sizeof(char);
+        line_buffer = (char*)realloc_s(line_buffer, new_size);
+        size_t diff = new_size - old_size;
+        void* pStart = ((char*)line_buffer) + old_size;
+
+        memset(pStart, 0, diff);
+    }
+
+    buffer_size += ref_val_len;
+    strcat(line_buffer, ref_val);
+
+#else
+    printf(format, ref_val);
+#endif
+}
+
+void move_next_buf()
+{
+#ifdef PYTHON_BINDING
+    result_list_size++;
+    PY_list_result = (char**)realloc_s(PY_list_result, sizeof(char*) * result_list_size);
+    PY_list_result[result_list_size-1] = line_buffer;
+    char *new_buffer;
+    line_buffer = new_buffer;
+    buffer_size = 0;
+    chunk_size = 0;
+#else
+    putchar('\n');
+#endif
+}
+
+
 Area init()
 {
     struct participant_render* participants_r = (struct participant_render*)malloc(sizeof(struct participant_render) * participants.members_num);
@@ -262,24 +305,41 @@ void print_header(Area area)
 #ifdef UTF_SUPPORT
     for (y = 0; y < area.header.pos.y; y++)
     {
+#ifdef OPTS_SUP
         if (prefix != NULL)
-            printf("%s", prefix);
+            push_to_buf("%s", prefix);
+#endif
         for (x = 0; x < area.header.pos.x; x++)
         {
-            printf("%s", area.header.buffer[y][x]);
+            push_to_buf("%s", area.header.buffer[y][x]);
         }
+#ifdef OPTS_SUP
         if (suffix != NULL)
-            printf("%s", suffix);
+            push_to_buf("%s", suffix);
+#endif
+#ifdef PYTHON_BINDING
+        move_next_buf();
+#else
         putchar('\n');
+#endif
     }
 #else
     for (y = 0; y < area.header.pos.y; y++)
+#ifdef OPTS_SUP
         if (prefix != NULL)
-            printf("%s", prefix);
-        printf("%s", area.header.buffer[y]);
+            push_to_buf("%s", prefix);
+#endif
+        push_to_buf("%s", area.header.buffer[y]);
+#ifdef OPTS_SUP
         if (suffix != NULL)
-            printf("%s", suffix);
+            push_to_buf("%s", suffix);
+#endif
+#ifdef PYTHON_BINDING
+        move_next_buf();
+#else
         putchar('\n');
+#endif
+
 #endif
 }
 
@@ -289,25 +349,41 @@ void print_body(Area area)
 #ifdef UTF_SUPPORT
     for (y = 0; y < area.body.pos.y; y++)
     {
+#ifdef OPTS_SUP
         if (prefix != NULL)
-            printf("%s", prefix);
+            push_to_buf("%s", prefix);
+#endif
         for (x = 0; x < area.header.pos.x; x++)
         {
-            printf("%s", area.body.buffer[y][x]);
+            push_to_buf("%s", area.body.buffer[y][x]);
         }
+#ifdef OPTS_SUP
         if (suffix != NULL)
-            printf("%s", suffix);
+            push_to_buf("%s", suffix);
+#endif
+#ifdef PYTHON_BINDING
+        move_next_buf();
+#else
         putchar('\n');
+#endif
     }
 #else
     for (y = 0; y < area.body.pos.y; y++)
     {
+#ifdef OPTS_SUP
         if (prefix != NULL)
-            printf("%s", prefix);
-        printf("%s", area.body.buffer[y]);
+            push_to_buf("%s", prefix);
+#endif
+        push_to_buf("%s", area.body.buffer[y]);
+#ifdef OPTS_SUP
         if (suffix != NULL)
-            printf("%s", suffix);
+            push_to_buf("%s", suffix);
+#endif
+#ifdef PYTHON_BINDING
+        move_next_buf();
+#else
         putchar('\n');
+#endif
     }
 #endif
 }
@@ -657,22 +733,28 @@ void render()
     add_arrow_messages(&new_area);
 
     int l = new_area.header.pos.x;
+#ifdef OPTS_SUP
     if (prefix != NULL)
         l += strlen(prefix);
     if (suffix != NULL)
         l += strlen(suffix);
+#endif
 
     char a[l];
+#ifdef OPTS_SUP
     if (!printRaw) {
         memset(a, '=', l);
         a[l] = '\0';
-        printf(KGRN"%s\n"RESET, a);
+        push_to_buf(KGRN"%s\n"RESET, a);
     }
+#endif
 
     print_header(new_area);
     print_body(new_area);
 
+#ifdef OPTS_SUP
     if (!printRaw) {
-        printf(KGRN"%s\n"RESET, a);
+        push_to_buf(KGRN"%s\n"RESET, a);
     }
+#endif
 }

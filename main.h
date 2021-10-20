@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include "fetch.h"
+
+#ifdef CHECK_UPDATE
+#   include "fetch.h"
+#endif
 
 int SHOW_LOG;
 char *prefix;

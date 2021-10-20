@@ -10,7 +10,9 @@
 
 #include "../terminal.h"
 
+#ifdef CLI
 extern int SHOW_LOG;
+#endif
 
 // word -> word : string
 #define IS_ARROW_LINE(words) \
@@ -75,12 +77,14 @@ static inline void define_new_arrow(Words *words)
     arrow_connections.cons = (ArrowConnection**)realloc_s(arrow_connections.cons, sizeof(ArrowConnection) * arrow_connections.cons_num);
     arrow_connections.cons[arrow_connections.cons_num - 1] = new_arrow;
 
+#ifdef CLI
     if(SHOW_LOG >= 1)
     {
         printf_c(KCYN " * ");
         printf("define new arrow: '%s' %d '%s' : %s\n", new_arrow->from->name->string, new_arrow->type, new_arrow->to->name->string, new_arrow->content);
 
     }
+#endif
 }
 
 static inline bool check_is_arrow(Words *words)

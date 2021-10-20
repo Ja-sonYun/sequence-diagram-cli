@@ -1,3 +1,4 @@
+#ifdef CHECK_UPDATE
 #ifndef FETCH_H
 #define FETCH_H
 #define VERSION "v1.3.4"
@@ -10,4 +11,5 @@
 
 void check_version();
 
+#endif
 #endif

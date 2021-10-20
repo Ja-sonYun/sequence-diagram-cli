@@ -3,11 +3,25 @@
 
 #include "parser.h"
 #include "style.h"
+#include "string.h"
 #include <math.h>
 
 extern char *prefix;
 extern char *suffix;
+#ifdef OPTS_SUP
 extern bool printRaw;
+#endif
+
+#ifdef PYTHON_BINDING
+#define LINE_BUF_CHUNK 50
+#define LINE_BUF_PADDING 5
+char **PY_list_result;
+char *line_buffer;
+int result_list_size = 0;
+int buffer_size = 0;
+int chunk_size = 0;
+int failed_at = -1;
+#endif
 
 #define GET_LINE_M(from, to) \
     (to - from) / 2 + from

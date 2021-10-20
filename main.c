@@ -20,6 +20,7 @@ void readfile(char *filename)
         CUR_LINE_NUM++;
         if (strcmp(line, "\n") && line[0] != ';')
         {
+#ifdef CLI
             if (SHOW_LOG > 1)
             {
                 int line_s = strlen(line) + 3;
@@ -29,6 +30,7 @@ void readfile(char *filename)
                 printf(KGRN"%s\n", sep);
                 printf(KBLU" +"KCYN" %s\n"RESET, line);
             }
+#endif
             line[strlen(line)-1] = '\0';
             parse_line(line, CUR_LINE_NUM);
         }
@@ -51,6 +53,7 @@ int main(int argc, char *argv[])
 
     bool is_text = false;
 
+#ifdef CHECK_UPDATE
     if (argc == 1)
     {
         check_version();
@@ -60,6 +63,7 @@ int main(int argc, char *argv[])
     }
 
     printf("*** sequence-diagram-cli %s, github@Ja-sonYun ***\n", VERSION);
+#endif
     for (int i = 2; i < argc; i++)
     {
         if (!strncmp(argv[i], "log=", 4))
@@ -114,7 +118,9 @@ int main(int argc, char *argv[])
     readfile(argv[1]);
 
 
+#ifdef CHECK_UPDATE
     check_version();
+#endif
 
     return 0;
 }

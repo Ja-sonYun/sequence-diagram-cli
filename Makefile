@@ -1,10 +1,11 @@
 OBJ_DIR = obj
 
 # TODO use other func instead of 'strdup'
-CFLAG = -c -Wall -O2 # std=c99
+override CFLAG += -c -Wall -O2 # std=c99
 OBJECTS = main.o arrow_connection.o participant.o renderer.o parser.o scanner.o style.o fetch.o
 TARGET = seqdia
 
+B_FLAG=-DCLI -DOPTS_SUP
 CURLF = -I/usr/local/opt/curl/include -L/usr/local/opt/curl/lib -lcurl
 
 ARROW_C_C = ./grammars/arrow_connection.c
@@ -19,7 +20,7 @@ FETCH_C = ./fetch.c
 .PHONY: clean
 
 $(TARGET): $(OBJECTS)
-	gcc $(OBJECTS) -o $(TARGET) $(CURLF)
+	gcc $(OBJECTS) -o $(TARGET) $(B_FLAG)
 
 main.o: $(MAIN_C)
 	gcc $(CFLAG) $(MAIN_C)
@@ -46,6 +47,6 @@ fetch.o: $(FETCH_C)
 	gcc $(CFLAG) $(FETCH_C)
 
 clean:
-	rm -rf seqdia && rm *.o
+	rm -f seqdia && rm -f *.o
 
 all: $(TARGET)

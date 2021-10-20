@@ -21,7 +21,9 @@
 #define PARTICIPANT_TYPE_COLLECTIONS 6
 #define PARTICIPANT_START_SYM 'participant'
 
+#ifdef CLI
 extern int SHOW_LOG;
+#endif
 
 typedef struct
 {
@@ -47,6 +49,7 @@ static inline void join_participants(Participant* new_member)
     participants.members_num++;
     participants.members = (Participant**)realloc_s(participants.members, sizeof(Participant) * participants.members_num);
     participants.members[participants.members_num - 1] = new_member;
+#ifdef CLI
     if (SHOW_LOG >= 1)
     {
         if (new_member->has_alias)
@@ -60,6 +63,7 @@ static inline void join_participants(Participant* new_member)
             printf("register new participant: '%s' , priority: '%d'\n", new_member->name->string, participants.members_num);
         }
     }
+#endif
 }
 
 static inline Participant *find_participant(char *str)
