@@ -1,20 +1,13 @@
 #include "main.h"
-
-void readfile(char *filename)
+#define STDIN_OPTION_POSITION 1
+#define STANDARD_OPTION_POSITION 2
+void read_lines_and_render(FILE *fp)
 {
-    FILE *fp;
+    int CUR_LINE_NUM = 0;
     char *line = NULL;
     size_t len = 0;
     ssize_t read;
 
-    fp = fopen(filename, "r");
-    if (fp == NULL)
-    {
-        printf("file not found!\n");
-        exit(0);
-    }
-
-    int CUR_LINE_NUM = 0;
     while ((read = getline(&line, &len, fp)) != -1)
     {
         CUR_LINE_NUM++;
@@ -37,11 +30,34 @@ void readfile(char *filename)
     }
 
     render();
-
     fclose(fp);
     if (line)
         free(line);
 }
+
+
+void readfile(char *filename)
+{
+    FILE *fp = fopen(filename, "r");
+    if (fp == NULL)
+    {
+	    printf("file not found \n");
+	    exit(0);
+    }
+    read_lines_and_render(fp);
+}
+
+void read_stdin()
+{
+    FILE *fp = fdopen(STDIN_FILENO, "r");
+    if (fp == NULL)
+    {
+	    printf("stdin not found \n");
+	    exit(0);
+    }
+    read_lines_and_render(fp);
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -52,6 +68,7 @@ int main(int argc, char *argv[])
     printRaw = false;
 
     bool is_text = false;
+    bool is_stdin_disabled = isatty(0);
 
 #ifdef CHECK_UPDATE
     if (argc == 1)
@@ -64,7 +81,9 @@ int main(int argc, char *argv[])
 
     printf("*** sequence-diagram-cli %s, github@Ja-sonYun ***\n", VERSION);
 #endif
-    for (int i = 2; i < argc; i++)
+
+    int option_starting_pos = is_stdin_disabled ? STANDARD_OPTION_POSITION : STDIN_OPTION_POSITION;
+    for (int i = option_starting_pos; i < argc; i++)
     {
         if (!strncmp(argv[i], "log=", 4))
         {
@@ -115,7 +134,23 @@ int main(int argc, char *argv[])
 
     set_style(is_text);
 
-    readfile(argv[1]);
+    bool file_exists = access(argv[1], F_OK) == 0;
+    if (!file_exists && is_stdin_disabled)
+    {
+        printf("file not found \n");
+    }
+    else if (file_exists && !is_stdin_disabled)
+    {
+        printf("Undefined behaviour: stdin and file specified\n");
+    }
+    else if (is_stdin_disabled)
+    {
+        readfile(argv[1]);
+    }
+    else
+    {
+        read_stdin();
+    }
 
 
 #ifdef CHECK_UPDATE

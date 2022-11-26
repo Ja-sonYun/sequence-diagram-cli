@@ -1,8 +1,8 @@
 # sequence-diagram-cli
-Draw seqence diagram from terminal.    
- 
+Draw seqence diagram from terminal.
+
 <img src="https://github.com/Ja-sonYun/sequence-diagram-cli/blob/main/example.png?raw=true" height="790">
-Korean and Japanese(which takes two spaces by character in terminal) will looks like above image only in terminal.     
+Korean and Japanese(which takes two spaces by character in terminal) will looks like above image only in terminal.
 
 **You can also customize styles by editing style.h.**
 
@@ -17,20 +17,21 @@ python -c "import seqdia"
 [more details](https://github.com/Ja-sonYun/seqdia-python-binding)
 
 ## Installation
- `wget -qO - https://github.com/Ja-sonYun/sequence-diagram-cli/raw/main/install.sh | bash` 
+ `wget -qO - https://github.com/Ja-sonYun/sequence-diagram-cli/raw/main/install.sh | bash`
 ```
 Usage
 
-$ ~/sequence-diagram-cli > seqdia 'YOUR_SEQUENCE_DIAGRAM_FILE'
-$ ~/sequence-diagram-cli > seqdia 'YOUR_SEQUENCE_DIAGRAM_FILE' prefix='// ' suffix='|' al raw
+$ seqdia 'YOUR_SEQUENCE_DIAGRAM_FILE'
+$ seqdia 'YOUR_SEQUENCE_DIAGRAM_FILE' prefix='// ' suffix='|' al raw
 
 v1.1
 // with ' al ' option will draw sequence diagram in pure character not utf-8.
 
 // with ' raw ' the surrounding lines will not be printed
 
-//example
-$ ~/sequence-diagram-cli > seqdia tests/test.txt
+//examples
+$ seqdia tests/test.txt
+$ echo "Alice -> Bob:Hello" | seqdia
 ```
 
 ## Example ouput
