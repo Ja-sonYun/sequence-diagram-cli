@@ -12,7 +12,13 @@ static const RenderChars UTF8_CHARS = {
     .box_h = "─",
     .box_v = "│",
     .box_bt = "┬",
+    .note_tl = "╒",
+    .note_tr = "╕",
+    .note_bl = "└",
+    .note_br = "┘",
+    .note_th = "═",
     .life_v = "┆",
+    .loop_v = "│",
     .life_branch_left = "├",
     .life_branch_right = "┤",
     .arrow_right = "▶",
@@ -35,7 +41,13 @@ static const RenderChars ASCII_CHARS = {
     .box_h = "-",
     .box_v = "|",
     .box_bt = "-",
+    .note_tl = "+",
+    .note_tr = "+",
+    .note_bl = "+",
+    .note_br = "+",
+    .note_th = "=",
     .life_v = "|",
+    .loop_v = "|",
     .life_branch_left = "+",
     .life_branch_right = "+",
     .arrow_right = ">",
@@ -476,7 +488,7 @@ static int render_self_message(FILE *output, Diagram *d, Layout *layout,
         return -1;
       if (print_spaces(output, loop_width) < 0)
         return -1;
-      if (fputs(chars->life_v, output) == EOF)
+      if (fputs(chars->loop_v, output) == EOF)
         return -1;
       col = loop_end;
     } else {
@@ -542,8 +554,8 @@ static size_t calc_note_box_start(Layout *layout, Note *note,
 static int render_note_box_line(FILE *output, Diagram *d, Layout *layout,
                                 size_t box_start, size_t box_end,
                                 const RenderChars *chars, const char *left_edge,
-                                const char *right_edge, const char *text,
-                                size_t text_len) {
+                                const char *right_edge, const char *h_line,
+                                const char *text, size_t text_len) {
   size_t col = 0;
   bool box_printed = false;
   size_t inner_width = box_end - box_start - 2;
@@ -571,7 +583,7 @@ static int render_note_box_line(FILE *output, Diagram *d, Layout *layout,
         if (print_spaces(output, pad_right) < 0)
           return -1;
       } else {
-        if (print_repeat(output, chars->box_h, inner_width) < 0)
+        if (print_repeat(output, h_line, inner_width) < 0)
           return -1;
       }
       if (fputs(right_edge, output) == EOF)
@@ -602,7 +614,7 @@ static int render_note_box_line(FILE *output, Diagram *d, Layout *layout,
       if (print_spaces(output, pad_right) < 0)
         return -1;
     } else {
-      if (print_repeat(output, chars->box_h, inner_width) < 0)
+      if (print_repeat(output, h_line, inner_width) < 0)
         return -1;
     }
     if (fputs(right_edge, output) == EOF)
@@ -627,28 +639,30 @@ static int render_note(FILE *output, Diagram *d, Layout *layout, Note *note,
   size_t box_end = box_start + box_width;
 
   if (render_note_box_line(output, d, layout, box_start, box_end, chars,
-                           chars->box_tl, chars->box_tr, NULL, 0) < 0)
+                           chars->note_tl, chars->note_tr, chars->note_th, NULL,
+                           0) < 0)
     return -1;
 
   for (size_t line_idx = 0; line_idx < note->line_count; line_idx++) {
     size_t text_len = 0;
     const char *text = get_line(note->text, line_idx, &text_len);
     if (render_note_box_line(output, d, layout, box_start, box_end, chars,
-                             chars->box_v, chars->box_v, text, text_len) < 0)
+                             chars->box_v, chars->box_v, chars->box_h, text,
+                             text_len) < 0)
       return -1;
   }
 
   if (render_note_box_line(output, d, layout, box_start, box_end, chars,
-                           chars->box_bl, chars->box_br, NULL, 0) < 0)
+                           chars->note_bl, chars->note_br, chars->box_h, NULL,
+                           0) < 0)
     return -1;
   return 0;
 }
 
 static int render_inline_note_line(FILE *output, size_t *col, size_t box_start,
-                                   size_t box_end, const RenderChars *chars,
-                                   const char *left_edge,
-                                   const char *right_edge, const char *text,
-                                   size_t text_len) {
+                                   size_t box_end, const char *left_edge,
+                                   const char *right_edge, const char *h_line,
+                                   const char *text, size_t text_len) {
   size_t inner_width = box_end - box_start - 2;
   size_t text_width = text ? utf8_display_width_n(text, text_len) : 0;
   size_t pad_left = 0;
@@ -671,7 +685,7 @@ static int render_inline_note_line(FILE *output, size_t *col, size_t box_start,
     if (print_spaces(output, pad_right) < 0)
       return -1;
   } else {
-    if (print_repeat(output, chars->box_h, inner_width) < 0)
+    if (print_repeat(output, h_line, inner_width) < 0)
       return -1;
   }
   if (fputs(right_edge, output) == EOF)
@@ -686,10 +700,10 @@ static int render_inline_row(
     size_t right_pos, const char *line_char, const char *arrow_char,
     size_t line_span, bool left_note, size_t left_box_start,
     size_t left_box_end, const char *left_edge, const char *left_right_edge,
-    const char *left_text, size_t left_text_len, bool right_note,
-    size_t right_box_start, size_t right_box_end, const char *right_left_edge,
-    const char *right_right_edge, const char *right_text,
-    size_t right_text_len) {
+    const char *left_h_line, const char *left_text, size_t left_text_len,
+    bool right_note, size_t right_box_start, size_t right_box_end,
+    const char *right_left_edge, const char *right_right_edge,
+    const char *right_h_line, const char *right_text, size_t right_text_len) {
   size_t col = 0;
   bool left_drawn = false;
   bool right_drawn = false;
@@ -699,8 +713,8 @@ static int render_inline_row(
 
     if (left_note && !left_drawn && left_box_start <= pos) {
       if (render_inline_note_line(output, &col, left_box_start, left_box_end,
-                                  chars, left_edge, left_right_edge, left_text,
-                                  left_text_len) < 0)
+                                  left_edge, left_right_edge, left_h_line,
+                                  left_text, left_text_len) < 0)
         return -1;
       left_drawn = true;
       while (i + 1 < d->participant_count &&
@@ -712,8 +726,8 @@ static int render_inline_row(
 
     if (right_note && !right_drawn && right_box_start <= pos) {
       if (render_inline_note_line(output, &col, right_box_start, right_box_end,
-                                  chars, right_left_edge, right_right_edge,
-                                  right_text, right_text_len) < 0)
+                                  right_left_edge, right_right_edge,
+                                  right_h_line, right_text, right_text_len) < 0)
         return -1;
       right_drawn = true;
       while (i + 1 < d->participant_count &&
@@ -776,13 +790,13 @@ static int render_inline_row(
 
   if (left_note && !left_drawn) {
     if (render_inline_note_line(output, &col, left_box_start, left_box_end,
-                                chars, left_edge, left_right_edge, left_text,
-                                left_text_len) < 0)
+                                left_edge, left_right_edge, left_h_line,
+                                left_text, left_text_len) < 0)
       return -1;
   }
   if (right_note && !right_drawn) {
     if (render_inline_note_line(output, &col, right_box_start, right_box_end,
-                                chars, right_left_edge, right_right_edge,
+                                right_left_edge, right_right_edge, right_h_line,
                                 right_text, right_text_len) < 0)
       return -1;
   }
@@ -796,9 +810,10 @@ static int render_message_text_line(
     FILE *output, Diagram *d, Layout *layout, const RenderChars *chars,
     const char *text, size_t text_len, size_t text_start, size_t text_end,
     bool left_note, size_t left_box_start, size_t left_box_end,
-    const char *left_edge, const char *left_right_edge, bool right_note,
-    size_t right_box_start, size_t right_box_end, const char *right_left_edge,
-    const char *right_right_edge) {
+    const char *left_edge, const char *left_right_edge, const char *left_h_line,
+    bool right_note, size_t right_box_start, size_t right_box_end,
+    const char *right_left_edge, const char *right_right_edge,
+    const char *right_h_line) {
   size_t col = 0;
   bool text_printed = false;
   bool left_drawn = false;
@@ -809,7 +824,7 @@ static int render_message_text_line(
 
     if (left_note && !left_drawn && left_box_start <= pos) {
       if (render_inline_note_line(output, &col, left_box_start, left_box_end,
-                                  chars, left_edge, left_right_edge, NULL,
+                                  left_edge, left_right_edge, left_h_line, NULL,
                                   0) < 0)
         return -1;
       left_drawn = true;
@@ -831,8 +846,8 @@ static int render_message_text_line(
 
     if (right_note && !right_drawn && right_box_start <= pos) {
       if (render_inline_note_line(output, &col, right_box_start, right_box_end,
-                                  chars, right_left_edge, right_right_edge,
-                                  NULL, 0) < 0)
+                                  right_left_edge, right_right_edge,
+                                  right_h_line, NULL, 0) < 0)
         return -1;
       right_drawn = true;
       while (i + 1 < d->participant_count &&
@@ -855,13 +870,14 @@ static int render_message_text_line(
 
   if (left_note && !left_drawn) {
     if (render_inline_note_line(output, &col, left_box_start, left_box_end,
-                                chars, left_edge, left_right_edge, NULL, 0) < 0)
+                                left_edge, left_right_edge, left_h_line, NULL,
+                                0) < 0)
       return -1;
   }
   if (right_note && !right_drawn) {
     if (render_inline_note_line(output, &col, right_box_start, right_box_end,
-                                chars, right_left_edge, right_right_edge, NULL,
-                                0) < 0)
+                                right_left_edge, right_right_edge, right_h_line,
+                                NULL, 0) < 0)
       return -1;
   }
   if (!text_printed) {
@@ -980,11 +996,13 @@ static int render_message(FILE *output, Diagram *d, Layout *layout, Message *m,
     if (render_message_text_line(
             output, d, layout, chars, text, text_len, text_start, text_end,
             draw_top ? left_note : false, left_box_start, left_box_end,
-            draw_top ? chars->box_tl : chars->box_v,
-            draw_top ? chars->box_tr : chars->box_v,
+            draw_top ? chars->note_tl : chars->box_v,
+            draw_top ? chars->note_tr : chars->box_v,
+            draw_top ? chars->note_th : chars->box_h,
             draw_top ? right_note : false, right_box_start, right_box_end,
-            draw_top ? chars->box_tl : chars->box_v,
-            draw_top ? chars->box_tr : chars->box_v) < 0)
+            draw_top ? chars->note_tl : chars->box_v,
+            draw_top ? chars->note_tr : chars->box_v,
+            draw_top ? chars->note_th : chars->box_h) < 0)
       return -1;
   }
 
@@ -1083,9 +1101,10 @@ static int render_message(FILE *output, Diagram *d, Layout *layout, Message *m,
   if (render_inline_row(output, d, layout, chars, true, left_to_right, from_pos,
                         left_pos, right_pos, line_char, arrow_char, line_span,
                         left_note, left_box_start, left_box_end, chars->box_v,
-                        chars->box_v, left_note_text, left_note_len, right_note,
-                        right_box_start, right_box_end, chars->box_v,
-                        chars->box_v, right_note_text, right_note_len) < 0)
+                        chars->box_v, chars->box_h, left_note_text,
+                        left_note_len, right_note, right_box_start,
+                        right_box_end, chars->box_v, chars->box_v, chars->box_h,
+                        right_note_text, right_note_len) < 0)
     return -1;
 
   size_t remaining = 0;
@@ -1101,8 +1120,10 @@ static int render_message(FILE *output, Diagram *d, Layout *layout, Message *m,
     size_t right_len = 0;
     const char *left_edge = NULL;
     const char *left_right_edge = NULL;
+    const char *left_h_line = chars->box_h;
     const char *right_left_edge = NULL;
     const char *right_right_edge = NULL;
+    const char *right_h_line = chars->box_h;
     bool draw_left = left_note && ln <= left_note->line_count;
     bool draw_right = right_note && ln <= right_note->line_count;
 
@@ -1112,8 +1133,8 @@ static int render_message(FILE *output, Diagram *d, Layout *layout, Message *m,
         left_edge = chars->box_v;
         left_right_edge = chars->box_v;
       } else {
-        left_edge = chars->box_bl;
-        left_right_edge = chars->box_br;
+        left_edge = chars->note_bl;
+        left_right_edge = chars->note_br;
       }
     }
 
@@ -1123,8 +1144,8 @@ static int render_message(FILE *output, Diagram *d, Layout *layout, Message *m,
         right_left_edge = chars->box_v;
         right_right_edge = chars->box_v;
       } else {
-        right_left_edge = chars->box_bl;
-        right_right_edge = chars->box_br;
+        right_left_edge = chars->note_bl;
+        right_right_edge = chars->note_br;
       }
     }
 
@@ -1132,11 +1153,11 @@ static int render_message(FILE *output, Diagram *d, Layout *layout, Message *m,
             output, d, layout, chars, false, left_to_right, from_pos, left_pos,
             right_pos, line_char, arrow_char, line_span, draw_left,
             left_box_start, left_box_end, left_edge ? left_edge : chars->box_v,
-            left_right_edge ? left_right_edge : chars->box_v, left_text,
-            left_len, draw_right, right_box_start, right_box_end,
+            left_right_edge ? left_right_edge : chars->box_v, left_h_line,
+            left_text, left_len, draw_right, right_box_start, right_box_end,
             right_left_edge ? right_left_edge : chars->box_v,
-            right_right_edge ? right_right_edge : chars->box_v, right_text,
-            right_len) < 0)
+            right_right_edge ? right_right_edge : chars->box_v, right_h_line,
+            right_text, right_len) < 0)
       return -1;
   }
   return 0;

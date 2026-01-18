@@ -16,7 +16,13 @@ typedef struct {
   const char *box_h;
   const char *box_v;
   const char *box_bt;
+  const char *note_tl;
+  const char *note_tr;
+  const char *note_bl;
+  const char *note_br;
+  const char *note_th;
   const char *life_v;
+  const char *loop_v;
   const char *life_branch_left;
   const char *life_branch_right;
   const char *arrow_right;
