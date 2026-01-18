@@ -117,6 +117,7 @@ note right: inline right
 
 ### TODO
 
+- Installation via brew/nix
 - more arrow design
 - loop, alt, opt, etc.
 - colors
