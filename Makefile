@@ -1,52 +1,77 @@
-OBJ_DIR = obj
+CC = gcc
+CFLAGS = -Wall -Wextra -O2 -std=c11 -D_XOPEN_SOURCE=700
 
-# TODO use other func instead of 'strdup'
-override CFLAG += -c -Wall -O2 # std=c99
-OBJECTS = main.o arrow_connection.o participant.o renderer.o parser.o scanner.o style.o fetch.o
-TARGET = seqdia
+# Main binary
+BIN_SRC = src/cli/main.c
+BIN = seqdia
 
-B_FLAG=-DCLI -DOPTS_SUP
-CURLF = -I/usr/local/opt/curl/include -L/usr/local/opt/curl/lib -lcurl
+# Shared sources
+COMMON_SRC = src/model/types.c \
+             src/model/error.c \
+             src/model/text_utils.c \
+             src/lexer/lexer.c \
+             src/parser/parser.c \
+             src/renderer/renderer.c
 
-ARROW_C_C = ./grammars/arrow_connection.c
-PARTICIPANT_C = ./grammars/participant.c
-RENDERER_C = ./renderer.c
-PARSER_C = ./parser.c
-SCANNER_C = ./scanner.c
-MAIN_C = ./main.c
-STYLE_C = ./style.c
-FETCH_C = ./fetch.c
+# Test binary
+TEST_SRC = tests/simple_test.c
+TEST_BIN = tests/simple_test
 
-.PHONY: clean
+OBJ_DIR = build
+COMMON_OBJ = $(COMMON_SRC:%.c=$(OBJ_DIR)/%.o)
+BIN_OBJ = $(BIN_SRC:%.c=$(OBJ_DIR)/%.o)
+TEST_OBJ = $(TEST_SRC:%.c=$(OBJ_DIR)/%.o)
 
-$(TARGET): $(OBJECTS)
-	gcc $(OBJECTS) -o $(TARGET) $(B_FLAG)
+HEADERS = src/model/error.h src/model/types.h src/model/text_utils.h \
+          src/lexer/lexer.h src/parser/parser.h src/renderer/renderer.h
+FORMAT_SRC = $(BIN_SRC) $(COMMON_SRC) $(TEST_SRC) $(HEADERS)
+TIDY_SRC = $(BIN_SRC) $(COMMON_SRC) $(TEST_SRC)
 
-main.o: $(MAIN_C)
-	gcc $(CFLAG) $(MAIN_C)
+VERSION = 2.0.0
 
-renderer.o: $(RENDERER_C)
-	gcc $(CFLAG) $(RENDERER_C)
+FIXTURE_INPUTS = tests/fixtures/notes.txt \
+                 tests/fixtures/complex-options.txt \
+                 tests/fixtures/complex-advanced.txt \
+                 tests/fixtures/stress-large.txt
 
-parser.o: $(PARSER_C)
-	gcc $(CFLAG) $(PARSER_C)
+.PHONY: all clean test dump-fixtures format format-check lint lint-fix
 
-arrow_connection.o: $(ARROW_C_C)
-	gcc $(CFLAG) $(ARROW_C_C)
+all: $(BIN)
 
-participant.o: $(PARTICIPANT_C)
-	gcc $(CFLAG) $(PARTICIPANT_C)
+$(BIN): $(COMMON_OBJ) $(BIN_OBJ)
+	$(CC) $(CFLAGS) $(COMMON_OBJ) $(BIN_OBJ) -o $(BIN) -DSEQDIA_VERSION="\"$(VERSION)\""
 
-scanner.o: $(SCANNER_C)
-	gcc $(CFLAG) $(SCANNER_C)
+$(OBJ_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
 
-style.o: $(STYLE_C)
-	gcc $(CFLAG) $(STYLE_C)
+test: $(TEST_BIN)
+	@echo "Running tests..."
+	@./$(TEST_BIN)
 
-fetch.o: $(FETCH_C)
-	gcc $(CFLAG) $(FETCH_C)
+format:
+	clang-format -i $(FORMAT_SRC)
+
+format-check:
+	clang-format --dry-run --Werror $(FORMAT_SRC)
+
+lint:
+	clang-tidy $(TIDY_SRC) -- $(CFLAGS)
+
+lint-fix:
+	clang-tidy -fix $(TIDY_SRC) -- $(CFLAGS)
+
+$(TEST_BIN): $(COMMON_OBJ) $(TEST_OBJ)
+	@mkdir -p $(dir $(TEST_BIN))
+	$(CC) $(CFLAGS) $(COMMON_OBJ) $(TEST_OBJ) -o $(TEST_BIN)
+
+dump-fixtures: $(BIN)
+	@for file in $(FIXTURE_INPUTS); do \
+	  base=$$(basename $$file .txt); \
+	  ./$(BIN) --style ascii $$file > tests/fixtures/$$base.ascii.out; \
+	  ./$(BIN) --style utf8 $$file > tests/fixtures/$$base.utf8.out; \
+	done
 
 clean:
-	rm -f seqdia && rm -f *.o
-
-all: $(TARGET)
+	rm -f $(BIN) $(TEST_BIN)
+	rm -rf $(OBJ_DIR)

@@ -1,3 +1,0 @@
-A->B: sdjakls
-B->A: alskjdka
-A-->B: aksld

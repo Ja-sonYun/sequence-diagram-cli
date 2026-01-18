@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_suffix: linux-x86_64
+          - os: macos-latest
+            artifact_suffix: macos-arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
+
+      - name: Build
+        run: nix develop . --command make
+
+      - name: Package
+        run: tar -czf seqdia-${{ github.ref_name }}-${{ matrix.artifact_suffix }}.tar.gz seqdia
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: seqdia-${{ matrix.artifact_suffix }}
+          path: seqdia-${{ github.ref_name }}-${{ matrix.artifact_suffix }}.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la dist/
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          fail_on_unmatched_files: true

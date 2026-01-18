@@ -1,0 +1,38 @@
+' complex fixture
+// comment line
+; another comment
+
+participant "Big Boss" as Boss
+participant Alice
+participant "Bob B" as Bob
+participant Carol
+participant "QA Team" as QA
+participant "データ" as Data
+
+Alice->Bob: solid
+note left: inline left
+note right: inline right
+Bob<-Alice: solid-left
+note left of Bob: explicit left
+note right of Alice: explicit right
+note over Alice,Bob: explicit over
+Alice->>Bob: open
+Bob<<-Alice: open-left
+Alice-->Bob: dashed
+Bob<--Alice: dashed-left
+Alice->xBob: x
+note left
+multi
+line
+end note
+Bob x<-Alice: x-left
+Bob->Carol: implicit-defined
+Bob->Eve: implicit-new
+Alice->"QA Team": quoted target
+note right of QA: qa note
+QA->Boss: "multi
+line
+message"
+Boss->Boss: self
+Data->Alice: "데이터 전송"
+Alice->Bob: http://example.com/path?x=1&y=2

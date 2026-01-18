@@ -1,189 +1,123 @@
 # sequence-diagram-cli
-Draw seqence diagram from terminal.    
- 
-<img src="https://github.com/Ja-sonYun/sequence-diagram-cli/blob/main/example.png?raw=true" height="790">
-Korean and Japanese(which takes two spaces by character in terminal) will looks like above image only in terminal.     
 
-**You can also customize styles by editing style.h.**
+Draw sequence diagrams from the terminal.
 
-## Use from python
-```
-git clone --recurse-submodules https://github.com/Ja-sonYun/sequence-diagram-cli.git
-cd sequence-diagram-cli/seqdia-python-binding
-python setup.py build
-python setup.py install
-python -c "import seqdia"
-```
-[more details](https://github.com/Ja-sonYun/seqdia-python-binding)
-
-## Installation
- `wget -qO - https://github.com/Ja-sonYun/sequence-diagram-cli/raw/main/install.sh | bash` 
-```
-Usage
-
-$ ~/sequence-diagram-cli > seqdia 'YOUR_SEQUENCE_DIAGRAM_FILE'
-$ ~/sequence-diagram-cli > seqdia 'YOUR_SEQUENCE_DIAGRAM_FILE' prefix='// ' suffix='|' al raw
-
-v1.1
-// with ' al ' option will draw sequence diagram in pure character not utf-8.
-
-// with ' raw ' the surrounding lines will not be printed
-
-//example
-$ ~/sequence-diagram-cli > seqdia tests/test.txt
-```
-
-## Example ouput
-```scala
-./tests/test.txt
-------------------
-; participants
-participant User
-participant " * TODO
- - clean living room  " as todo
-participant Dev
-
-; connections
-User->User: default arrow
-User-->Dev: styled arrow
-todo->todo : "self connecting
-with
-new line"
-User->Dev : yes? sd
-User<--Dev : no
-todo<--Dev: reverse arrow
-S->todo: "EEEE
-E
-EEEE
-E
-EEEE"
--------------------
-
-$ ~/sequence-diagram-cli > seqdia tests/test.txt prefix="<-- " suffix=" -->"
-===========================================================
-<--         ╭────────────────────────╮                  -->
-<-- ╭──────╮│  * TODO                │   ╭─────╮╭───╮   -->
-<-- │ User ││  - clean living room   │   │ Dev ││ S │   -->
-<-- ╰───┬──╯╰────────────┬───────────╯   ╰──┬──╯╰─┬─╯   -->
-<--     │                │                  │     │     -->
-<--     │                │                  │     │     -->
-<--     │ default arrow  │                  │     │     -->
-<--     ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╮ │                  │     │     -->
-<--     │              │ │                  │     │     -->
-<--     │◀╌╌╌╌╌╌╌╌╌╌╌╌╌╯ │                  │     │     -->
-<--     │                │                  │     │     -->
-<--     │           styled arrow            │     │     -->
-<--     ├╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶≻│     │     -->
-<--     │                │                  │     │     -->
-<--     │                │ self connecting  │     │     -->
-<--     │                │ with             │     │     -->
-<--     │                │ new line         │     │     -->
-<--     │                ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╮ │     │     -->
-<--     │                │                │ │     │     -->
-<--     │                │◀╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╯ │     │     -->
-<--     │                │                  │     │     -->
-<--     │              yes? sd              │     │     -->
-<--     ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌▶│     │     -->
-<--     │                │                  │     │     -->
-<--     │                no                 │     │     -->
-<--     │≺╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴┤     │     -->
-<--     │                │                  │     │     -->
-<--     │                │  reverse arrow   │     │     -->
-<--     │                │≺╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴╴┤     │     -->
-<--     │                │                  │     │     -->
-<--     │                │         EEEE     │     │     -->
-<--     │                │         E        │     │     -->
-<--     │                │         EEEE     │     │     -->
-<--     │                │         E        │     │     -->
-<--     │                │         EEEE     │     │     -->
-<--     │                │◀╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤     -->
-<--     │                │                  │     │     -->
-<--     │                │                  │     │     -->
-<--     │                │                  │     │     -->
-<--     │                │                  │     │     -->
-<--     │                │                  │     │     -->
-<--     │                │                  │     │     -->
-===========================================================
-
-**** with al option ****
-
-$ ~/sequence-diagram-cli > seqdia tests/test.txt al prefix='<--'
-=====================================================
-//        +------------------------+
-//+------+|  * TODO                |   +-----++---+
-//| User ||  - clean living room   |   | Dev || S |
-//+---+--++------------+-----------+   +--+--++-+-+
-//    |                |                  |     |
-//    |                |                  |     |
-//    | default arrow  |                  |     |
-//    +--------------+ |                  |     |
-//    |              | |                  |     |
-//    |<-------------+ |                  |     |
-//    |                |                  |     |
-//    |           styled arrow            |     |
-//    +..................................>|     |
-//    |                |                  |     |
-//    |                | self connecting  |     |
-//    |                | with             |     |
-//    |                | new line         |     |
-//    |                +----------------+ |     |
-//    |                |                | |     |
-//    |                |<---------------+ |     |
-//    |                |                  |     |
-//    |              yes? sd              |     |
-//    +---------------------------------->|     |
-//    |                |                  |     |
-//    |                no                 |     |
-//    |<..................................+     |
-//    |                |                  |     |
-//    |                |  reverse arrow   |     |
-//    |                |<.................+     |
-//    |                |                  |     |
-//    |                |         EEEE     |     |
-//    |                |         E        |     |
-//    |                |         EEEE     |     |
-//    |                |         E        |     |
-//    |                |         EEEE     |     |
-//    |                |<-----------------------+
-//    |                |                  |     |
-//    |                |                  |     |
-//    |                |                  |     |
-//    |                |                  |     |
-//    |                |                  |     |
-//    |                |                  |     |
-=====================================================
+## Example
 
 ```
+$ ./seqdia <<'EOF'
+participant Alice
+participant Bob
+Alice->Bob: Hello
+note right of Bob: OK
+Alice<-Bob: Bye
+note left: end note
+EOF
+╭───────────────────────────────────╮  ╭───────────────────╮
+│               Alice               │  │        Bob        │
+╰─────────────────┬─────────────────╯  ╰─────────┬─────────╯
+                  ┆                              ┆
+                  ┆                              ┆
+                  ┆                              ┆
+                  ┆            Hello             ┆
+                  ├─────────────────────────────▶┆
+                  ┆                              ┆ ╭────╮
+                  ┆                              ┆ │ OK │
+                  ┆                              ┆ ╰────╯
+                  ┆                              ┆
+    ╭──────────╮  ┆             Bye              ┆
+    │ end note │  ┆◀─────────────────────────────┤
+    ╰──────────╯  ┆                              ┆
+                  ┆                              ┆
+                  ┆                              ┆
+                  ┆                              ┆
+                  ┆                              ┆
+                  ┆                              ┆
+
+```
+
+See more examples in `tests/fixtures/`.
+
+## Build from Source
+
+```
+make
+```
+
+## Usage
+
+```
+$ seqdia [options] [file]
+$ seqdia --style ascii tests/fixtures/simple.txt
+$ echo "Alice->Bob: Hello" | seqdia
+```
+
+Options:
+
+- `-v, --version` Print version
+- `--style <ascii|utf8>` Output style (default: utf8)
+
 ## Syntax
+
 ### participant
-You don't need to define participant, but for alignment, you should.
+
 ```scala
-participant User // this will be front
-; or
-participant "with a2a!@#!$" as A // you can use this like 'A -> User: ***'
-; or
-participant "new
-line" as nl // this will be last
+participant Alice
+participant "Billing Service" as Billing
+participant "multi
+line" as Multi
 ```
+
+Participants are optional, but defining them keeps columns aligned.
+
+### comment
+
+```scala
+// comment
+; comment
+' comment
+```
+
+Comments only work when the line starts with the marker (spaces allowed).
 
 ### arrow
+
 ```scala
-User->New: message // participant 'New' will defined automatically at here
-; or
-User-->New: message
-; or
-User<-A: message
-; or
-User<--A: message
-; or
-nl -> nl: " realllly // with multiple lines
-looooooong
-messageee"
-; or
-ee <- ee: "
-  you can't use like this" // when using new line, you should add 1 character to first line at least. I'll fix this soon.
+Alice->Bob: solid
+Bob<-Alice: solid-left
+Alice->>Bob: open
+Bob<<-Alice: open-left
+Alice-->Bob: dashed
+Bob<--Alice: dashed-left
+Alice->xBob: x
+Bob x<-Alice: x-left
+```
+
+### note
+
+```scala
+note left of Alice: left note
+note right of Bob: right note
+note over Alice,Bob: over both
+note over Alice
+multi
+line
+end note
+```
+
+Multi-line notes must end with `end note`.
+
+Inline notes (attach to the most recent message):
+
+```scala
+Alice->Bob: hello
+note left: inline left
+note right: inline right
 ```
 
 ### TODO
- - note
- - more arrow design
+
+- more arrow design
+- loop, alt, opt, etc.
+- colors
+- export to image

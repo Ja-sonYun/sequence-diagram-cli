@@ -1,0 +1,5 @@
+Checks: >
+  clang-analyzer-*,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  -clang-analyzer-unix.Errno,
+  -clang-analyzer-security.ArrayBound

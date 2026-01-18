@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "macos-latest"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v12
+
+      - name: Build
+        run: nix develop . --command make
+
+      - name: Test
+        run: nix develop . --command make test
+
+      - name: Format check
+        run: nix develop . --command make format-check
+
+      - name: Lint
+        run: nix develop . --command make lint

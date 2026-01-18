@@ -1,0 +1,48 @@
+' stress fixture
+participant A
+participant B
+participant C
+participant D
+participant E
+participant F
+participant G
+participant H
+participant I
+participant J
+participant K
+participant L
+
+A->B: m1
+note left: inline-1
+note right: inline-2
+B->C: m2
+C->D: m3
+D->E: m4
+note right of E: explicit-right
+E->F: m5
+F->G: m6
+G->H: m7
+H->I: m8
+I->J: m9
+J->K: m10
+K->L: m11
+note left of K: explicit-left
+L<-A: back-left
+A->>L: open-long
+L<<-B: open-left-long
+C-->J: dashed-wide
+J<--C: dashed-left
+C->xJ: cutover
+J x<-C: cutover-left
+E->E: self
+note right: self-inline
+F->F: "self
+multi"
+G->A: "wrap
+line
+line"
+B->H: "payload: abcdefghijklmnopqrstuvwxyz"
+D->K: http://example.com/long/path?x=1&y=2&z=3
+I->A: "回送"
+A->I: "재전송"
+L->A: final

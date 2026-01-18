@@ -1,0 +1,40 @@
+' complex advanced fixture
+participant "System Core" as Core
+participant "API Gateway" as API
+participant "Worker-1" as W1
+participant "Worker-2" as W2
+participant "DB Cluster" as DB
+participant "Cache Layer" as Cache
+participant "外部連携" as Ext
+participant "QA Team" as QA
+
+Core->API: startup
+note left: init note
+API->DB: "init
+schema"
+note right: schema note
+API->Cache: warmup
+note left of Cache: cache note
+API->W1: job-1
+API->W2: job-2
+W1->DB: read
+W1<--DB: result
+note over W1,DB: over result
+W2->DB: read
+W2<--DB: result
+W1->W1: self-check
+note right: self note
+W2->W2: "self
+multi
+line"
+W1->QA: "report
+line2"
+QA->Core: 승인
+Core->Ext: "sync
+外部"
+Ext<-Core: ack-left
+Core->DB: http://example.com/a/b?c=1&d=2
+DB->API: done
+Cache->API: cache-hit
+API->Core: "summary
+ok"

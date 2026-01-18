@@ -1,0 +1,15 @@
+participant Alice
+participant Bob
+participant Carol
+
+note left of Alice: left note
+note right of Bob: right note
+note over Alice,Bob: over note
+note over Alice
+multi
+line
+end note
+
+Alice<-Bob: hello
+note left: inline left
+note right: inline right
