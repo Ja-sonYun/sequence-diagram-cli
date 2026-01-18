@@ -28,7 +28,7 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@v12
 
       - name: Build
-        run: nix develop . --command make
+        run: nix develop . --command make VERSION=${GITHUB_REF_NAME#v}
 
       - name: Package
         run: tar -czf seqdia-${{ github.ref_name }}-${{ matrix.artifact_suffix }}.tar.gz seqdia

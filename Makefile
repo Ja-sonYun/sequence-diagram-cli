@@ -1,5 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -O2 -std=c11 -D_XOPEN_SOURCE=700
+VERSION = 2.0.0
+CFLAGS = -Wall -Wextra -O2 -std=c11 -D_XOPEN_SOURCE=700 -DSEQDIA_VERSION="\"$(VERSION)\""
 
 # Main binary
 BIN_SRC = src/cli/main.c
@@ -27,8 +28,6 @@ HEADERS = src/model/error.h src/model/types.h src/model/text_utils.h \
 FORMAT_SRC = $(BIN_SRC) $(COMMON_SRC) $(TEST_SRC) $(HEADERS)
 TIDY_SRC = $(BIN_SRC) $(COMMON_SRC) $(TEST_SRC)
 
-VERSION = 2.0.0
-
 FIXTURE_INPUTS = tests/fixtures/notes.txt \
                  tests/fixtures/complex-options.txt \
                  tests/fixtures/complex-advanced.txt \
@@ -39,7 +38,7 @@ FIXTURE_INPUTS = tests/fixtures/notes.txt \
 all: $(BIN)
 
 $(BIN): $(COMMON_OBJ) $(BIN_OBJ)
-	$(CC) $(CFLAGS) $(COMMON_OBJ) $(BIN_OBJ) -o $(BIN) -DSEQDIA_VERSION="\"$(VERSION)\""
+	$(CC) $(CFLAGS) $(COMMON_OBJ) $(BIN_OBJ) -o $(BIN)
 
 $(OBJ_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
