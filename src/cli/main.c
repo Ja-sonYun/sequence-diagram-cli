@@ -16,8 +16,8 @@ static void print_version(void) { printf("seqdia %s\n", SEQDIA_VERSION); }
 static void print_usage(void) {
   fprintf(stderr, "Usage: seqdia [options] [file]\n");
   fprintf(stderr, "Options:\n");
-  fprintf(stderr, "  -v, --version           Print version\n");
-  fprintf(stderr, "  --style <ascii|utf8>    Output style (default: utf8)\n");
+  fprintf(stderr, "  -v, --version             Print version\n");
+  fprintf(stderr, "  -s, --style <ascii|utf8>  Output style (default: utf8)\n");
 }
 
 static bool parse_style(const char *value, RenderMode *mode) {
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
     if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
       print_version();
       return 0;
-    } else if (strcmp(argv[i], "--style") == 0) {
+    } else if (strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--style") == 0) {
       if (i + 1 >= argc) {
         seqdia_error_input("missing value for --style");
         print_usage();
@@ -55,6 +55,18 @@ int main(int argc, char *argv[]) {
         return SEQDIA_ERR_INPUT;
       }
       i++;
+    } else if (strncmp(argv[i], "-s=", 3) == 0) {
+      const char *value = argv[i] + 3;
+      if (*value == '\0') {
+        seqdia_error_input("missing value for --style");
+        print_usage();
+        return SEQDIA_ERR_INPUT;
+      }
+      if (!parse_style(value, &mode)) {
+        seqdia_error_input("unknown style");
+        print_usage();
+        return SEQDIA_ERR_INPUT;
+      }
     } else if (strncmp(argv[i], "--style=", 8) == 0) {
       const char *value = argv[i] + 8;
       if (*value == '\0') {
@@ -67,6 +79,12 @@ int main(int argc, char *argv[]) {
         print_usage();
         return SEQDIA_ERR_INPUT;
       }
+    } else if (strcmp(argv[i], "-") == 0) {
+      if (filename != NULL) {
+        seqdia_error_input("multiple files specified");
+        return SEQDIA_ERR_INPUT;
+      }
+      filename = "-";
     } else if (argv[i][0] == '-') {
       seqdia_error_input("unknown option");
       print_usage();
@@ -81,15 +99,17 @@ int main(int argc, char *argv[]) {
   }
 
   FILE *input = NULL;
+  bool should_close = false;
   bool has_stdin = !isatty(STDIN_FILENO);
 
-  if (filename != NULL) {
+  if (filename != NULL && strcmp(filename, "-") != 0) {
     input = fopen(filename, "r");
     if (!input) {
       seqdia_error_file(filename, "cannot open file");
       return SEQDIA_ERR_FILE;
     }
-  } else if (has_stdin) {
+    should_close = true;
+  } else if (filename != NULL || has_stdin) {
     input = stdin;
   } else {
     seqdia_error_input("no input specified");
@@ -99,7 +119,7 @@ int main(int argc, char *argv[]) {
 
   Parser *parser = parser_new(input);
   if (!parser) {
-    if (filename)
+    if (should_close)
       fclose(input);
     seqdia_error_memory();
     return SEQDIA_ERR_MEMORY;
@@ -111,7 +131,7 @@ int main(int argc, char *argv[]) {
     if (parser->out_of_memory) {
       seqdia_error_memory();
       parser_free(parser);
-      if (filename)
+      if (should_close)
         fclose(input);
       return SEQDIA_ERR_MEMORY;
     }
@@ -119,7 +139,7 @@ int main(int argc, char *argv[]) {
       seqdia_error_parse(parser->error_line, parser->error_msg);
     }
     parser_free(parser);
-    if (filename)
+    if (should_close)
       fclose(input);
     return SEQDIA_ERR_PARSE;
   }
@@ -127,7 +147,7 @@ int main(int argc, char *argv[]) {
   if (!render_diagram(diagram, mode, stdout)) {
     diagram_free(diagram);
     parser_free(parser);
-    if (filename)
+    if (should_close)
       fclose(input);
     seqdia_error_memory();
     return SEQDIA_ERR_MEMORY;
@@ -135,7 +155,7 @@ int main(int argc, char *argv[]) {
 
   diagram_free(diagram);
   parser_free(parser);
-  if (filename)
+  if (should_close)
     fclose(input);
 
   return 0;

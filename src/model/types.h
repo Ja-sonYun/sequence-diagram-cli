@@ -3,6 +3,9 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
+
+#define INVALID_INDEX SIZE_MAX
 
 typedef enum {
   ARROW_SOLID,

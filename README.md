@@ -13,27 +13,23 @@ note right of Bob: OK
 Alice<-Bob: Bye
 note left: end note
 EOF
-╭───────────────────────────────────╮  ╭───────────────────╮
-│               Alice               │  │        Bob        │
-╰─────────────────┬─────────────────╯  ╰─────────┬─────────╯
-                  ┆                              ┆
-                  ┆                              ┆
-                  ┆                              ┆
-                  ┆            Hello             ┆
-                  ├─────────────────────────────▶┆
-                  ┆                              ┆ ╒════╕
-                  ┆                              ┆ │ OK │
-                  ┆                              ┆ └────┘
-                  ┆                              ┆
-    ╒══════════╕  ┆             Bye              ┆
-    │ end note │  ┆◀─────────────────────────────┤
-    └──────────┘  ┆                              ┆
-                  ┆                              ┆
-                  ┆                              ┆
-                  ┆                              ┆
-                  ┆                              ┆
-                  ┆                              ┆
-
+         ╭─────╮  ╭───╮
+         │Alice│  │Bob│
+         ╰──┬──╯  ╰─┬─╯
+            ┆       ┆
+            ┆ Hello ┆
+            ├──────▶┆
+            ┆       ┆
+            ┆       ┆╒════╕
+            ┆       ┆│ OK │
+            ┆       ┆└────┘
+            ┆       ┆
+╒══════════╕┆  Bye  ┆
+│ end note │┆◀──────┤
+└──────────┘┆       ┆
+            ┆       ┆
+            ┆       ┆
+            ┆       ┆
 ```
 
 See more examples in `tests/fixtures/`.
@@ -55,7 +51,7 @@ $ echo "Alice->Bob: Hello" | seqdia
 Options:
 
 - `-v, --version` Print version
-- `--style <ascii|utf8>` Output style (default: utf8)
+- `-s, --style <ascii|utf8>` Output style (default: utf8)
 
 ## Syntax
 

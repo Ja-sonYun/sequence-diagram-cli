@@ -102,7 +102,7 @@ static void test_participant_new_free(void) {
   assert(p2 != NULL);
   assert(strcmp(p2->name, "Bob Builder") == 0);
   assert(strcmp(p2->alias, "Bob") == 0);
-  assert(p2->display_width == 11); // display_width based on name, not alias
+  assert(p2->display_width == 11);
   participant_free(p2);
   free(p2);
   printf("[PASS] participant_new_free\n");

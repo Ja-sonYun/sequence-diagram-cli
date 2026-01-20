@@ -12,6 +12,7 @@ COMMON_SRC = src/model/types.c \
              src/model/text_utils.c \
              src/lexer/lexer.c \
              src/parser/parser.c \
+             src/renderer/canvas.c \
              src/renderer/renderer.c
 
 # Test binary
@@ -24,7 +25,8 @@ BIN_OBJ = $(BIN_SRC:%.c=$(OBJ_DIR)/%.o)
 TEST_OBJ = $(TEST_SRC:%.c=$(OBJ_DIR)/%.o)
 
 HEADERS = src/model/error.h src/model/types.h src/model/text_utils.h \
-          src/lexer/lexer.h src/parser/parser.h src/renderer/renderer.h
+          src/lexer/lexer.h src/parser/parser.h \
+          src/renderer/canvas.h src/renderer/renderer.h
 FORMAT_SRC = $(BIN_SRC) $(COMMON_SRC) $(TEST_SRC) $(HEADERS)
 TIDY_SRC = $(BIN_SRC) $(COMMON_SRC) $(TEST_SRC)
 
@@ -67,8 +69,8 @@ $(TEST_BIN): $(COMMON_OBJ) $(TEST_OBJ)
 dump-fixtures: $(BIN)
 	@for file in $(FIXTURE_INPUTS); do \
 	  base=$$(basename $$file .txt); \
-	  ./$(BIN) --style ascii $$file > tests/fixtures/$$base.ascii.out; \
-	  ./$(BIN) --style utf8 $$file > tests/fixtures/$$base.utf8.out; \
+	  ./$(BIN) -s ascii $$file > tests/fixtures/$$base.ascii.out; \
+	  ./$(BIN) -s utf8 $$file > tests/fixtures/$$base.utf8.out; \
 	done
 
 clean:

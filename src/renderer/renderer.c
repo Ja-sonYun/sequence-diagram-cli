@@ -1,8 +1,38 @@
 #include "renderer.h"
+#include "../model/text_utils.h"
 #include "../model/types.h"
-#include <stdio.h>
+#include "canvas.h"
 #include <stdlib.h>
 #include <string.h>
+
+typedef struct {
+  const char *box_tl;
+  const char *box_tr;
+  const char *box_bl;
+  const char *box_br;
+  const char *box_h;
+  const char *box_v;
+  const char *box_bt;
+  const char *note_tl;
+  const char *note_tr;
+  const char *note_bl;
+  const char *note_br;
+  const char *note_th;
+  const char *life_v;
+  const char *loop_v;
+  const char *life_branch_left;
+  const char *life_branch_right;
+  const char *arrow_right;
+  const char *arrow_left;
+  const char *arrow_right_open;
+  const char *arrow_left_open;
+  const char *arrow_right_dashed;
+  const char *arrow_left_dashed;
+  const char *arrow_right_x;
+  const char *arrow_left_x;
+  const char *line_solid;
+  const char *line_dashed;
+} RenderChars;
 
 static const RenderChars UTF8_CHARS = {
     .box_tl = "╭",
@@ -59,14 +89,36 @@ static const RenderChars ASCII_CHARS = {
     .arrow_right_x = "x",
     .arrow_left_x = "x",
     .line_solid = "-",
-    .line_dashed = "~",
+    .line_dashed = ".",
+};
+
+enum {
+  BOX_PADDING = 1,
+  MIN_BOX_WIDTH = 3,
+  BASE_GAP = 1,
+  MSG_PADDING = 2,
+  NOTE_BOX_EXTRA = 4,
+  NOTE_BORDER_HEIGHT = 2,
+  LIFELINE_GAP = 0,
+  SELF_MSG_TEXT_OFFSET = 2,
+  HEADER_SPACING = 1,
+  EVENT_SPACING = 1,
+  FOOTER_SPACING = 2,
 };
 
 typedef struct {
   size_t *positions;
   size_t *widths;
+  size_t *gaps;
+  size_t left_margin;
   size_t count;
   size_t total_width;
+
+  size_t max_name_lines;
+  size_t header_height;
+  size_t *event_y;
+  size_t *event_heights;
+  size_t total_height;
 } Layout;
 
 static const char *get_line(const char *text, size_t line_idx, size_t *len) {
@@ -97,20 +149,224 @@ static const char *get_line(const char *text, size_t line_idx, size_t *len) {
   return start;
 }
 
-static void ensure_note_span(Layout *layout, size_t left, size_t right,
-                             size_t note_width) {
-  size_t span = layout->widths[left] / 2 + layout->widths[right] / 2 + 2;
+static bool arrow_is_dashed(ArrowType arrow) {
+  return arrow == ARROW_DASHED || arrow == ARROW_DASHED_LEFT;
+}
+
+static bool arrow_is_open(ArrowType arrow) {
+  return arrow == ARROW_OPEN || arrow == ARROW_OPEN_LEFT;
+}
+
+static bool arrow_is_x(ArrowType arrow) {
+  return arrow == ARROW_X || arrow == ARROW_X_LEFT;
+}
+
+static const char *select_arrow_char(const RenderChars *chars, ArrowType arrow,
+                                     bool left_to_right) {
+  if (left_to_right) {
+    if (arrow_is_dashed(arrow))
+      return chars->arrow_right_dashed;
+    if (arrow_is_open(arrow))
+      return chars->arrow_right_open;
+    if (arrow_is_x(arrow))
+      return chars->arrow_right_x;
+    return chars->arrow_right;
+  }
+
+  if (arrow_is_dashed(arrow))
+    return chars->arrow_left_dashed;
+  if (arrow_is_open(arrow))
+    return chars->arrow_left_open;
+  if (arrow_is_x(arrow))
+    return chars->arrow_left_x;
+  return chars->arrow_left;
+}
+
+static size_t calc_span(Layout *layout, size_t left, size_t right) {
+  size_t span = layout->widths[left] / 2 + layout->widths[right] / 2;
+  span += layout->gaps[left];
   for (size_t j = left + 1; j < right; j++) {
-    span += layout->widths[j] + 2;
+    span += layout->widths[j] + layout->gaps[j];
   }
-  size_t available = span > 0 ? span - 1 : 0;
-  if (note_width > available) {
-    size_t extra = note_width - available;
-    size_t left_extra = (extra + 1) / 2;
-    size_t right_extra = extra / 2;
-    layout->widths[left] += left_extra * 2;
-    layout->widths[right] += right_extra * 2;
+  return span;
+}
+
+static void expand_gaps(Layout *layout, size_t left, size_t right,
+                        size_t required) {
+  size_t current = calc_span(layout, left, right);
+  if (required <= current)
+    return;
+
+  size_t extra = required - current;
+  size_t gap_count = right - left;
+
+  if (gap_count > 0) {
+    size_t per_gap = extra / gap_count;
+    size_t remainder = extra % gap_count;
+    for (size_t j = left; j < right; j++) {
+      layout->gaps[j] += per_gap + (j - left < remainder ? 1 : 0);
+    }
+  } else {
+    layout->widths[left] += extra * 2;
   }
+}
+
+static void layout_self_message(Layout *layout, Message *m, size_t count) {
+  size_t loop_width = max_line_width(m->text) + NOTE_BOX_EXTRA;
+  size_t required = loop_width + LIFELINE_GAP;
+  size_t idx = m->from_idx;
+
+  if (idx + 1 < count) {
+    size_t current = layout->widths[idx] / 2 + layout->widths[idx + 1] / 2 +
+                     layout->gaps[idx];
+    if (required > current)
+      layout->gaps[idx] += required - current;
+  } else {
+    size_t current = layout->widths[idx] / 2 + layout->gaps[idx];
+    if (required > current)
+      layout->gaps[idx] += required - current;
+  }
+}
+
+static size_t calc_message_height(Diagram *d, Message *m) {
+  if (m->is_self) {
+    return count_lines(m->text) + 3 + EVENT_SPACING;
+  }
+
+  size_t height = count_lines(m->text) + 1;
+
+  size_t left_lines = 0, right_lines = 0;
+  if (m->inline_left_note_idx != INVALID_INDEX)
+    left_lines = d->notes[m->inline_left_note_idx].line_count;
+  if (m->inline_right_note_idx != INVALID_INDEX)
+    right_lines = d->notes[m->inline_right_note_idx].line_count;
+
+  size_t max_note = left_lines > right_lines ? left_lines : right_lines;
+  if (max_note > 0)
+    height += max_note;
+
+  return height + EVENT_SPACING;
+}
+
+static size_t calc_note_height(Note *note) {
+  return note->line_count + 2 + EVENT_SPACING;
+}
+
+static void layout_init_widths_and_gaps(Layout *layout, Diagram *d) {
+  for (size_t i = 0; i < d->participant_count; i++) {
+    const Participant *p = &d->participants[i];
+    layout->widths[i] = p->max_line_width + BOX_PADDING * 2;
+    if (layout->widths[i] < MIN_BOX_WIDTH)
+      layout->widths[i] = MIN_BOX_WIDTH;
+    layout->gaps[i] = (i + 1 < d->participant_count) ? BASE_GAP : 0;
+  }
+}
+
+static void layout_expand_for_messages(Layout *layout, Diagram *d) {
+  for (size_t i = 0; i < d->message_count; i++) {
+    Message *m = &d->messages[i];
+    if (m->from_idx == m->to_idx) {
+      layout_self_message(layout, m, d->participant_count);
+      continue;
+    }
+
+    size_t left = m->from_idx < m->to_idx ? m->from_idx : m->to_idx;
+    size_t right = m->from_idx < m->to_idx ? m->to_idx : m->from_idx;
+    size_t msg_width = max_line_width(m->text) + MSG_PADDING;
+    expand_gaps(layout, left, right, msg_width);
+
+    if (m->inline_left_note_idx != INVALID_INDEX) {
+      Note *note = &d->notes[m->inline_left_note_idx];
+      size_t box_width = note->max_line_width + NOTE_BOX_EXTRA;
+      size_t needed = box_width + LIFELINE_GAP;
+      if (left > 0) {
+        size_t avail = layout->widths[left - 1] / 2 + layout->gaps[left - 1] +
+                       layout->widths[left] / 2;
+        if (needed > avail)
+          layout->gaps[left - 1] += needed - avail;
+      } else {
+        size_t avail = layout->left_margin + layout->widths[left] / 2;
+        if (needed > avail)
+          layout->left_margin += needed - avail;
+      }
+    }
+    if (m->inline_right_note_idx != INVALID_INDEX) {
+      Note *note = &d->notes[m->inline_right_note_idx];
+      size_t box_width = note->max_line_width + NOTE_BOX_EXTRA;
+      size_t needed = box_width + LIFELINE_GAP;
+      size_t avail = layout->gaps[right] + layout->widths[right] / 2;
+      if (needed > avail)
+        layout->gaps[right] += needed - avail;
+    }
+  }
+}
+
+static void layout_expand_for_notes(Layout *layout, Diagram *d) {
+  for (size_t i = 0; i < d->note_count; i++) {
+    Note *note = &d->notes[i];
+    size_t box_width = note->max_line_width + NOTE_BOX_EXTRA;
+    size_t left = note->from_idx;
+    size_t right = note->to_idx;
+    size_t needed = box_width + LIFELINE_GAP;
+
+    if (note->position == NOTE_LEFT) {
+      if (left > 0) {
+        size_t avail = layout->widths[left - 1] / 2 + layout->gaps[left - 1] +
+                       layout->widths[left] / 2;
+        if (needed > avail)
+          layout->gaps[left - 1] += needed - avail;
+      } else {
+        size_t avail = layout->left_margin + layout->widths[left] / 2;
+        if (needed > avail)
+          layout->left_margin += needed - avail;
+      }
+    } else if (note->position == NOTE_RIGHT) {
+      if (right + 1 < d->participant_count) {
+        size_t avail = layout->widths[right] / 2 + layout->gaps[right] +
+                       layout->widths[right + 1] / 2;
+        if (needed > avail)
+          layout->gaps[right] += needed - avail;
+      } else {
+        layout->gaps[right] += needed;
+      }
+    } else {
+      expand_gaps(layout, left, right, needed);
+    }
+  }
+}
+
+static void layout_finalize_positions(Layout *layout) {
+  size_t pos = layout->left_margin;
+  for (size_t i = 0; i < layout->count; i++) {
+    layout->positions[i] = pos + layout->widths[i] / 2;
+    pos += layout->widths[i] + layout->gaps[i];
+  }
+  layout->total_width = pos;
+}
+
+static void layout_compute_heights(Layout *layout, Diagram *d) {
+  layout->max_name_lines = 1;
+  for (size_t i = 0; i < d->participant_count; i++) {
+    if (d->participants[i].line_count > layout->max_name_lines)
+      layout->max_name_lines = d->participants[i].line_count;
+  }
+  layout->header_height = 2 + layout->max_name_lines + HEADER_SPACING;
+
+  size_t y = layout->header_height;
+  for (size_t i = 0; i < d->event_count; i++) {
+    layout->event_y[i] = y;
+    DiagramEvent *event = &d->events[i];
+
+    if (event->type == EVENT_MESSAGE) {
+      layout->event_heights[i] =
+          calc_message_height(d, &d->messages[event->index]);
+    } else {
+      layout->event_heights[i] = calc_note_height(&d->notes[event->index]);
+    }
+    y += layout->event_heights[i];
+  }
+
+  layout->total_height = y + FOOTER_SPACING;
 }
 
 static Layout *compute_layout(Diagram *d) {
@@ -119,97 +375,29 @@ static Layout *compute_layout(Diagram *d) {
     return NULL;
 
   layout->count = d->participant_count;
+  layout->left_margin = 0;
   layout->positions = calloc(layout->count, sizeof(size_t));
   layout->widths = calloc(layout->count, sizeof(size_t));
-  if (!layout->positions || !layout->widths) {
+  layout->gaps = calloc(layout->count, sizeof(size_t));
+  layout->event_y = calloc(d->event_count, sizeof(size_t));
+  layout->event_heights = calloc(d->event_count, sizeof(size_t));
+
+  if (!layout->positions || !layout->widths || !layout->gaps ||
+      !layout->event_y || !layout->event_heights) {
     free(layout->positions);
     free(layout->widths);
+    free(layout->gaps);
+    free(layout->event_y);
+    free(layout->event_heights);
     free(layout);
     return NULL;
   }
 
-  for (size_t i = 0; i < d->participant_count; i++) {
-    const Participant *participant = &d->participants[i];
-    size_t name_width = participant->max_line_width;
-    size_t name_lines = participant->line_count;
-    size_t min_width = name_lines > 1 ? 3 : 7;
-    layout->widths[i] = name_width + 4;
-    if (layout->widths[i] < min_width)
-      layout->widths[i] = min_width;
-  }
-
-  for (size_t i = 0; i < d->message_count; i++) {
-    Message *m = &d->messages[i];
-    if (m->from_idx == m->to_idx) {
-      size_t loop_width = max_line_width(m->text) + 4;
-      size_t required_span = loop_width + 2;
-      size_t idx = m->from_idx;
-      if (idx + 1 < d->participant_count) {
-        size_t current_span =
-            layout->widths[idx] / 2 + layout->widths[idx + 1] / 2 + 2;
-        if (required_span > current_span) {
-          size_t extra = required_span - current_span;
-          layout->widths[idx + 1] += extra * 2;
-        }
-      } else {
-        size_t current_span = layout->widths[idx] / 2 + 2;
-        if (required_span > current_span) {
-          size_t extra = required_span - current_span;
-          layout->widths[idx] += extra * 2;
-        }
-      }
-      continue;
-    }
-
-    size_t left = m->from_idx < m->to_idx ? m->from_idx : m->to_idx;
-    size_t right = m->from_idx < m->to_idx ? m->to_idx : m->from_idx;
-
-    size_t msg_width = max_line_width(m->text) + 6;
-
-    size_t current_span =
-        layout->widths[left] / 2 + layout->widths[right] / 2 + 2;
-    for (size_t j = left + 1; j < right; j++) {
-      current_span += layout->widths[j] + 2;
-    }
-
-    size_t available = current_span > 0 ? current_span - 1 : 0;
-    if (msg_width > available) {
-      size_t extra = msg_width - available;
-      size_t left_extra = (extra + 1) / 2;
-      size_t right_extra = extra / 2;
-      layout->widths[left] += left_extra * 2;
-      layout->widths[right] += right_extra * 2;
-    }
-  }
-
-  for (size_t i = 0; i < d->note_count; i++) {
-    Note *note = &d->notes[i];
-    size_t note_width = note->max_line_width + 4;
-    size_t left = note->from_idx;
-    size_t right = note->to_idx;
-    if (note->position == NOTE_LEFT) {
-      if (left > 0) {
-        ensure_note_span(layout, left - 1, left, note_width + 2);
-      } else {
-        layout->widths[left] += note_width * 2;
-      }
-    } else if (note->position == NOTE_RIGHT) {
-      if (right + 1 < d->participant_count) {
-        ensure_note_span(layout, right, right + 1, note_width + 2);
-      } else {
-        layout->widths[right] += note_width * 2;
-      }
-    } else {
-      ensure_note_span(layout, left, right, note_width + 2);
-    }
-  }
-
-  size_t pos = 0;
-  for (size_t i = 0; i < layout->count; i++) {
-    layout->positions[i] = pos + layout->widths[i] / 2;
-    pos += layout->widths[i] + 2;
-  }
-  layout->total_width = pos;
+  layout_init_widths_and_gaps(layout, d);
+  layout_expand_for_messages(layout, d);
+  layout_expand_for_notes(layout, d);
+  layout_finalize_positions(layout);
+  layout_compute_heights(layout, d);
 
   return layout;
 }
@@ -219,312 +407,56 @@ static void layout_free(Layout *layout) {
     return;
   free(layout->positions);
   free(layout->widths);
+  free(layout->gaps);
+  free(layout->event_y);
+  free(layout->event_heights);
   free(layout);
 }
 
-static int print_spaces_safe(FILE *output, size_t from, size_t to) {
-  if (to > from) {
-    for (size_t i = 0; i < to - from; i++) {
-      if (fputc(' ', output) == EOF)
-        return -1;
-    }
-  }
-  return 0;
-}
-
-static int print_spaces(FILE *output, size_t n) {
-  for (size_t i = 0; i < n; i++) {
-    if (fputc(' ', output) == EOF)
-      return -1;
-  }
-  return 0;
-}
-
-static int print_repeat(FILE *output, const char *s, size_t n) {
-  for (size_t i = 0; i < n; i++) {
-    if (fputs(s, output) == EOF)
-      return -1;
-  }
-  return 0;
-}
-
-static int print_bytes(FILE *output, const char *text, size_t len) {
-  if (len == 0)
-    return 0;
-  if (fwrite(text, 1, len, output) != len)
-    return -1;
-  return 0;
-}
-
-static int render_lifeline(FILE *output, Diagram *d, Layout *layout,
+static void draw_lifelines(Canvas *c, Diagram *d, Layout *layout,
                            const RenderChars *chars) {
-  size_t col = 0;
   for (size_t i = 0; i < d->participant_count; i++) {
-    size_t pos = layout->positions[i];
-    if (print_spaces(output, pos - col) < 0)
-      return -1;
-    if (fputs(chars->life_v, output) == EOF)
-      return -1;
-    col = pos + 1;
+    size_t x = layout->positions[i];
+    canvas_vline(c, x, 0, layout->total_height - 1, chars->life_v);
   }
-  if (print_spaces(output, layout->total_width - col) < 0)
-    return -1;
-  if (fputc('\n', output) == EOF)
-    return -1;
-  return 0;
 }
 
-static int render_header_top(FILE *output, Diagram *d, Layout *layout,
-                             const RenderChars *chars) {
-  size_t col = 0;
+static void draw_header(Canvas *c, Diagram *d, Layout *layout,
+                        const RenderChars *chars) {
   for (size_t i = 0; i < d->participant_count; i++) {
     size_t pos = layout->positions[i];
     size_t width = layout->widths[i];
     size_t box_start = pos - width / 2;
+    size_t box_end = box_start + width;
 
-    if (print_spaces(output, box_start - col) < 0)
-      return -1;
-    if (fputs(chars->box_tl, output) == EOF)
-      return -1;
-    if (print_repeat(output, chars->box_h, width - 2) < 0)
-      return -1;
-    if (fputs(chars->box_tr, output) == EOF)
-      return -1;
-    col = box_start + width;
-  }
-  if (print_spaces(output, layout->total_width - col) < 0)
-    return -1;
-  if (fputc('\n', output) == EOF)
-    return -1;
-  return 0;
-}
+    canvas_put(c, box_start, 0, chars->box_tl);
+    canvas_hline(c, box_start + 1, box_end - 2, 0, chars->box_h);
+    canvas_put(c, box_end - 1, 0, chars->box_tr);
 
-static int render_header_name(FILE *output, Diagram *d, Layout *layout,
-                              const RenderChars *chars) {
-  size_t max_lines = 1;
-  for (size_t i = 0; i < d->participant_count; i++) {
-    if (d->participants[i].line_count > max_lines)
-      max_lines = d->participants[i].line_count;
-  }
+    const Participant *p = &d->participants[i];
+    for (size_t ln = 0; ln < layout->max_name_lines; ln++) {
+      size_t row = 1 + ln;
+      canvas_put(c, box_start, row, chars->box_v);
+      canvas_put(c, box_end - 1, row, chars->box_v);
 
-  for (size_t line_idx = 0; line_idx < max_lines; line_idx++) {
-    size_t col = 0;
-    for (size_t i = 0; i < d->participant_count; i++) {
-      size_t pos = layout->positions[i];
-      size_t width = layout->widths[i];
-      size_t box_start = pos - width / 2;
-
-      if (print_spaces(output, box_start - col) < 0)
-        return -1;
-      if (fputs(chars->box_v, output) == EOF)
-        return -1;
-
-      const Participant *participant = &d->participants[i];
-      size_t inner = width - 2;
       size_t text_len = 0;
-      const char *text = get_line(participant->name, line_idx, &text_len);
-      size_t text_width = 0;
+      const char *text = get_line(p->name, ln, &text_len);
       if (text) {
-        text_width = utf8_display_width_n(text, text_len);
+        size_t text_width = utf8_display_width_n(text, text_len);
+        size_t inner = width - 2;
+        size_t pad = (inner > text_width) ? (inner - text_width) / 2 : 0;
+        canvas_puts_n(c, box_start + 1 + pad, row, text, text_len);
       }
-      size_t pad_left = (inner - text_width) / 2;
-      size_t pad_right = inner - text_width - pad_left;
-
-      if (print_spaces(output, pad_left) < 0)
-        return -1;
-      if (text) {
-        if (print_bytes(output, text, text_len) < 0)
-          return -1;
-      }
-      if (print_spaces(output, pad_right) < 0)
-        return -1;
-      if (fputs(chars->box_v, output) == EOF)
-        return -1;
-      col = box_start + width;
     }
-    if (print_spaces(output, layout->total_width - col) < 0)
-      return -1;
-    if (fputc('\n', output) == EOF)
-      return -1;
-  }
-  return 0;
-}
 
-static int render_header_bottom(FILE *output, Diagram *d, Layout *layout,
-                                const RenderChars *chars) {
-  size_t col = 0;
-  for (size_t i = 0; i < d->participant_count; i++) {
-    size_t pos = layout->positions[i];
-    size_t width = layout->widths[i];
-    size_t box_start = pos - width / 2;
+    size_t bottom = 1 + layout->max_name_lines;
     size_t half = width / 2;
-
-    if (print_spaces(output, box_start - col) < 0)
-      return -1;
-    if (fputs(chars->box_bl, output) == EOF)
-      return -1;
-    if (print_repeat(output, chars->box_h, half - 1) < 0)
-      return -1;
-    if (fputs(chars->box_bt, output) == EOF)
-      return -1;
-    if (print_repeat(output, chars->box_h, width - 2 - half) < 0)
-      return -1;
-    if (fputs(chars->box_br, output) == EOF)
-      return -1;
-    col = box_start + width;
+    canvas_put(c, box_start, bottom, chars->box_bl);
+    canvas_hline(c, box_start + 1, box_start + half - 1, bottom, chars->box_h);
+    canvas_put(c, pos, bottom, chars->box_bt);
+    canvas_hline(c, pos + 1, box_end - 2, bottom, chars->box_h);
+    canvas_put(c, box_end - 1, bottom, chars->box_br);
   }
-  if (print_spaces(output, layout->total_width - col) < 0)
-    return -1;
-  if (fputc('\n', output) == EOF)
-    return -1;
-
-  size_t max_lines = 1;
-  for (size_t i = 0; i < d->participant_count; i++) {
-    if (d->participants[i].line_count > max_lines)
-      max_lines = d->participants[i].line_count;
-  }
-
-  for (size_t line_idx = 1; line_idx < max_lines; line_idx++) {
-    if (render_lifeline(output, d, layout, chars) < 0)
-      return -1;
-  }
-  return 0;
-}
-
-static int render_self_message(FILE *output, Diagram *d, Layout *layout,
-                               Message *m, const RenderChars *chars) {
-  size_t msg_width = max_line_width(m->text);
-  size_t loop_width = msg_width + 4;
-  size_t num_lines = count_lines(m->text);
-
-  bool is_dashed = (m->arrow == ARROW_DASHED || m->arrow == ARROW_DASHED_LEFT);
-  bool is_x = (m->arrow == ARROW_X || m->arrow == ARROW_X_LEFT);
-  const char *line_char = is_dashed ? chars->line_dashed : chars->line_solid;
-  const char *arrow_char =
-      is_dashed ? chars->arrow_left_dashed
-                : (is_x ? chars->arrow_left_x : chars->arrow_left);
-
-  size_t col;
-
-  if (render_lifeline(output, d, layout, chars) < 0)
-    return -1;
-
-  for (size_t ln = 0; ln < num_lines; ln++) {
-    size_t text_len;
-    const char *text = get_line(m->text, ln, &text_len);
-    size_t text_width = utf8_display_width_n(text, text_len);
-    size_t text_start = layout->positions[m->from_idx] + 2;
-    size_t text_end = text_start + text_width;
-    bool text_printed = false;
-
-    col = 0;
-    for (size_t i = 0; i < d->participant_count; i++) {
-      size_t p = layout->positions[i];
-      if (!text_printed && text_start <= p) {
-        if (print_spaces_safe(output, col, text_start) < 0)
-          return -1;
-        if (print_bytes(output, text, text_len) < 0)
-          return -1;
-        col = text_end;
-        text_printed = true;
-      }
-      if (p >= text_start && p < text_end) {
-        continue;
-      }
-      if (print_spaces_safe(output, col, p) < 0)
-        return -1;
-      if (fputs(chars->life_v, output) == EOF)
-        return -1;
-      col = p + 1;
-    }
-    if (!text_printed) {
-      if (print_spaces_safe(output, col, text_start) < 0)
-        return -1;
-      if (print_bytes(output, text, text_len) < 0)
-        return -1;
-    }
-    if (fputc('\n', output) == EOF)
-      return -1;
-  }
-
-  size_t loop_start = layout->positions[m->from_idx] + 1;
-  size_t loop_end = loop_start + loop_width + 1;
-
-  col = 0;
-  for (size_t i = 0; i < d->participant_count; i++) {
-    size_t p = layout->positions[i];
-    if (p > loop_start && p < loop_end) {
-      continue;
-    }
-    if (print_spaces_safe(output, col, p) < 0)
-      return -1;
-    if (i == m->from_idx) {
-      if (fputs(chars->life_branch_left, output) == EOF)
-        return -1;
-      if (print_repeat(output, line_char, loop_width) < 0)
-        return -1;
-      if (fputs(chars->box_tr, output) == EOF)
-        return -1;
-      col = loop_end;
-    } else {
-      if (fputs(chars->life_v, output) == EOF)
-        return -1;
-      col = p + 1;
-    }
-  }
-  if (fputc('\n', output) == EOF)
-    return -1;
-
-  col = 0;
-  for (size_t i = 0; i < d->participant_count; i++) {
-    size_t p = layout->positions[i];
-    if (p > loop_start && p < loop_end) {
-      continue;
-    }
-    if (print_spaces_safe(output, col, p) < 0)
-      return -1;
-    if (i == m->from_idx) {
-      if (fputs(chars->life_v, output) == EOF)
-        return -1;
-      if (print_spaces(output, loop_width) < 0)
-        return -1;
-      if (fputs(chars->loop_v, output) == EOF)
-        return -1;
-      col = loop_end;
-    } else {
-      if (fputs(chars->life_v, output) == EOF)
-        return -1;
-      col = p + 1;
-    }
-  }
-  if (fputc('\n', output) == EOF)
-    return -1;
-
-  col = 0;
-  for (size_t i = 0; i < d->participant_count; i++) {
-    size_t p = layout->positions[i];
-    if (p > loop_start && p < loop_end) {
-      continue;
-    }
-    if (print_spaces_safe(output, col, p) < 0)
-      return -1;
-    if (i == m->from_idx) {
-      if (fputs(arrow_char, output) == EOF)
-        return -1;
-      if (print_repeat(output, line_char, loop_width) < 0)
-        return -1;
-      if (fputs(chars->box_br, output) == EOF)
-        return -1;
-      col = loop_end;
-    } else {
-      if (fputs(chars->life_v, output) == EOF)
-        return -1;
-      col = p + 1;
-    }
-  }
-  if (fputc('\n', output) == EOF)
-    return -1;
-  return 0;
 }
 
 static size_t calc_note_box_start(Layout *layout, Note *note,
@@ -533,634 +465,185 @@ static size_t calc_note_box_start(Layout *layout, Note *note,
   size_t right_pos = layout->positions[note->to_idx];
 
   if (note->position == NOTE_LEFT) {
-    return left_pos > box_width + 2 ? left_pos - box_width - 2 : 0;
+    size_t offset = box_width + LIFELINE_GAP;
+    return left_pos > offset ? left_pos - offset : 0;
   }
   if (note->position == NOTE_RIGHT) {
-    return right_pos + 2;
+    return right_pos + 1 + LIFELINE_GAP;
   }
 
-  size_t span_left = left_pos;
-  size_t span_right = right_pos;
-  size_t span_width = span_right - span_left;
-  if (span_width > box_width)
-    return span_left + (span_width - box_width) / 2;
-  if (span_left > 0) {
-    size_t offset = (box_width - span_width) / 2;
-    return span_left > offset ? span_left - offset : 0;
-  }
-  return 0;
+  size_t span = right_pos - left_pos;
+  if (span >= box_width)
+    return left_pos + (span - box_width) / 2;
+  return left_pos > (box_width - span) / 2 ? left_pos - (box_width - span) / 2
+                                           : 0;
 }
 
-static int render_note_box_line(FILE *output, Diagram *d, Layout *layout,
-                                size_t box_start, size_t box_end,
-                                const RenderChars *chars, const char *left_edge,
-                                const char *right_edge, const char *h_line,
-                                const char *text, size_t text_len) {
-  size_t col = 0;
-  bool box_printed = false;
-  size_t inner_width = box_end - box_start - 2;
-  size_t text_width = text ? utf8_display_width_n(text, text_len) : 0;
-  size_t pad_left = 0;
-  size_t pad_right = 0;
-
-  if (text) {
-    pad_left = (inner_width - text_width) / 2;
-    pad_right = inner_width - text_width - pad_left;
-  }
-
-  for (size_t i = 0; i < d->participant_count; i++) {
-    size_t pos = layout->positions[i];
-    if (!box_printed && box_start <= pos) {
-      if (print_spaces_safe(output, col, box_start) < 0)
-        return -1;
-      if (fputs(left_edge, output) == EOF)
-        return -1;
-      if (text) {
-        if (print_spaces(output, pad_left) < 0)
-          return -1;
-        if (print_bytes(output, text, text_len) < 0)
-          return -1;
-        if (print_spaces(output, pad_right) < 0)
-          return -1;
-      } else {
-        if (print_repeat(output, h_line, inner_width) < 0)
-          return -1;
-      }
-      if (fputs(right_edge, output) == EOF)
-        return -1;
-      col = box_end;
-      box_printed = true;
-    }
-
-    if (pos >= box_start && pos < box_end)
-      continue;
-    if (print_spaces_safe(output, col, pos) < 0)
-      return -1;
-    if (fputs(chars->life_v, output) == EOF)
-      return -1;
-    col = pos + 1;
-  }
-
-  if (!box_printed) {
-    if (print_spaces_safe(output, col, box_start) < 0)
-      return -1;
-    if (fputs(left_edge, output) == EOF)
-      return -1;
-    if (text) {
-      if (print_spaces(output, pad_left) < 0)
-        return -1;
-      if (print_bytes(output, text, text_len) < 0)
-        return -1;
-      if (print_spaces(output, pad_right) < 0)
-        return -1;
-    } else {
-      if (print_repeat(output, h_line, inner_width) < 0)
-        return -1;
-    }
-    if (fputs(right_edge, output) == EOF)
-      return -1;
-    col = box_end;
-  }
-
-  if (layout->total_width > col) {
-    if (print_spaces(output, layout->total_width - col) < 0)
-      return -1;
-  }
-  if (fputc('\n', output) == EOF)
-    return -1;
-  return 0;
-}
-
-static int render_note(FILE *output, Diagram *d, Layout *layout, Note *note,
-                       const RenderChars *chars) {
-  size_t note_width = note->max_line_width + 2;
-  size_t box_width = note_width + 2;
+static void draw_note_box(Canvas *c, Layout *layout, Note *note, size_t y,
+                          const RenderChars *chars) {
+  size_t box_width = note->max_line_width + NOTE_BOX_EXTRA;
   size_t box_start = calc_note_box_start(layout, note, box_width);
   size_t box_end = box_start + box_width;
+  size_t inner = box_width - 2;
 
-  if (render_note_box_line(output, d, layout, box_start, box_end, chars,
-                           chars->note_tl, chars->note_tr, chars->note_th, NULL,
-                           0) < 0)
-    return -1;
+  canvas_put(c, box_start, y, chars->note_tl);
+  canvas_hline(c, box_start + 1, box_end - 2, y, chars->note_th);
+  canvas_put(c, box_end - 1, y, chars->note_tr);
 
-  for (size_t line_idx = 0; line_idx < note->line_count; line_idx++) {
+  for (size_t ln = 0; ln < note->line_count; ln++) {
+    size_t row = y + 1 + ln;
+    canvas_put(c, box_start, row, chars->box_v);
+    canvas_put(c, box_end - 1, row, chars->box_v);
+
     size_t text_len = 0;
-    const char *text = get_line(note->text, line_idx, &text_len);
-    if (render_note_box_line(output, d, layout, box_start, box_end, chars,
-                             chars->box_v, chars->box_v, chars->box_h, text,
-                             text_len) < 0)
-      return -1;
+    const char *text = get_line(note->text, ln, &text_len);
+    if (text) {
+      size_t tw = utf8_display_width_n(text, text_len);
+      size_t pad = (inner > tw) ? (inner - tw) / 2 : 0;
+      canvas_puts_n(c, box_start + 1 + pad, row, text, text_len);
+    }
   }
 
-  if (render_note_box_line(output, d, layout, box_start, box_end, chars,
-                           chars->note_bl, chars->note_br, chars->box_h, NULL,
-                           0) < 0)
-    return -1;
-  return 0;
+  size_t bottom = y + 1 + note->line_count;
+  canvas_put(c, box_start, bottom, chars->note_bl);
+  canvas_hline(c, box_start + 1, box_end - 2, bottom, chars->box_h);
+  canvas_put(c, box_end - 1, bottom, chars->note_br);
 }
 
-static int render_inline_note_line(FILE *output, size_t *col, size_t box_start,
-                                   size_t box_end, const char *left_edge,
-                                   const char *right_edge, const char *h_line,
-                                   const char *text, size_t text_len) {
-  size_t inner_width = box_end - box_start - 2;
-  size_t text_width = text ? utf8_display_width_n(text, text_len) : 0;
-  size_t pad_left = 0;
-  size_t pad_right = 0;
-
-  if (text) {
-    pad_left = (inner_width - text_width) / 2;
-    pad_right = inner_width - text_width - pad_left;
-  }
-
-  if (print_spaces_safe(output, *col, box_start) < 0)
-    return -1;
-  if (fputs(left_edge, output) == EOF)
-    return -1;
-  if (text) {
-    if (print_spaces(output, pad_left) < 0)
-      return -1;
-    if (print_bytes(output, text, text_len) < 0)
-      return -1;
-    if (print_spaces(output, pad_right) < 0)
-      return -1;
-  } else {
-    if (print_repeat(output, h_line, inner_width) < 0)
-      return -1;
-  }
-  if (fputs(right_edge, output) == EOF)
-    return -1;
-  *col = box_end;
-  return 0;
-}
-
-static int render_inline_row(
-    FILE *output, Diagram *d, Layout *layout, const RenderChars *chars,
-    bool draw_arrow, bool left_to_right, size_t from_pos, size_t left_pos,
-    size_t right_pos, const char *line_char, const char *arrow_char,
-    size_t line_span, bool left_note, size_t left_box_start,
-    size_t left_box_end, const char *left_edge, const char *left_right_edge,
-    const char *left_h_line, const char *left_text, size_t left_text_len,
-    bool right_note, size_t right_box_start, size_t right_box_end,
-    const char *right_left_edge, const char *right_right_edge,
-    const char *right_h_line, const char *right_text, size_t right_text_len) {
-  size_t col = 0;
-  bool left_drawn = false;
-  bool right_drawn = false;
-
-  for (size_t i = 0; i < d->participant_count; i++) {
-    size_t pos = layout->positions[i];
-
-    if (left_note && !left_drawn && left_box_start <= pos) {
-      if (render_inline_note_line(output, &col, left_box_start, left_box_end,
-                                  left_edge, left_right_edge, left_h_line,
-                                  left_text, left_text_len) < 0)
-        return -1;
-      left_drawn = true;
-      while (i + 1 < d->participant_count &&
-             layout->positions[i + 1] < left_box_end)
-        i++;
-      if (pos < left_box_end)
-        continue;
-    }
-
-    if (right_note && !right_drawn && right_box_start <= pos) {
-      if (render_inline_note_line(output, &col, right_box_start, right_box_end,
-                                  right_left_edge, right_right_edge,
-                                  right_h_line, right_text, right_text_len) < 0)
-        return -1;
-      right_drawn = true;
-      while (i + 1 < d->participant_count &&
-             layout->positions[i + 1] < right_box_end)
-        i++;
-      if (pos < right_box_end)
-        continue;
-    }
-
-    if (print_spaces_safe(output, col, pos) < 0)
-      return -1;
-    if (draw_arrow) {
-      if (left_to_right) {
-        if (pos == from_pos) {
-          if (fputs(chars->life_branch_left, output) == EOF)
-            return -1;
-          if (line_span > 0) {
-            if (print_repeat(output, line_char, line_span) < 0)
-              return -1;
-          }
-          if (fputs(arrow_char, output) == EOF)
-            return -1;
-          col = right_pos;
-          while (i + 1 < d->participant_count &&
-                 layout->positions[i + 1] < right_pos)
-            i++;
-        } else {
-          if (fputs(chars->life_v, output) == EOF)
-            return -1;
-          col = pos + 1;
-        }
-      } else {
-        if (pos == left_pos) {
-          if (fputs(chars->life_v, output) == EOF)
-            return -1;
-          if (fputs(arrow_char, output) == EOF)
-            return -1;
-          if (line_span > 0) {
-            if (print_repeat(output, line_char, line_span) < 0)
-              return -1;
-          }
-          if (fputs(chars->life_branch_right, output) == EOF)
-            return -1;
-          col = right_pos + 1;
-          while (i + 1 < d->participant_count &&
-                 layout->positions[i + 1] <= right_pos)
-            i++;
-        } else {
-          if (fputs(chars->life_v, output) == EOF)
-            return -1;
-          col = pos + 1;
-        }
-      }
-    } else {
-      if (fputs(chars->life_v, output) == EOF)
-        return -1;
-      col = pos + 1;
-    }
-  }
-
-  if (left_note && !left_drawn) {
-    if (render_inline_note_line(output, &col, left_box_start, left_box_end,
-                                left_edge, left_right_edge, left_h_line,
-                                left_text, left_text_len) < 0)
-      return -1;
-  }
-  if (right_note && !right_drawn) {
-    if (render_inline_note_line(output, &col, right_box_start, right_box_end,
-                                right_left_edge, right_right_edge, right_h_line,
-                                right_text, right_text_len) < 0)
-      return -1;
-  }
-
-  if (fputc('\n', output) == EOF)
-    return -1;
-  return 0;
-}
-
-static int render_message_text_line(
-    FILE *output, Diagram *d, Layout *layout, const RenderChars *chars,
-    const char *text, size_t text_len, size_t text_start, size_t text_end,
-    bool left_note, size_t left_box_start, size_t left_box_end,
-    const char *left_edge, const char *left_right_edge, const char *left_h_line,
-    bool right_note, size_t right_box_start, size_t right_box_end,
-    const char *right_left_edge, const char *right_right_edge,
-    const char *right_h_line) {
-  size_t col = 0;
-  bool text_printed = false;
-  bool left_drawn = false;
-  bool right_drawn = false;
-
-  for (size_t i = 0; i < d->participant_count; i++) {
-    size_t pos = layout->positions[i];
-
-    if (left_note && !left_drawn && left_box_start <= pos) {
-      if (render_inline_note_line(output, &col, left_box_start, left_box_end,
-                                  left_edge, left_right_edge, left_h_line, NULL,
-                                  0) < 0)
-        return -1;
-      left_drawn = true;
-      while (i + 1 < d->participant_count &&
-             layout->positions[i + 1] < left_box_end)
-        i++;
-      if (pos < left_box_end)
-        continue;
-    }
-
-    if (!text_printed && text_start <= pos) {
-      if (print_spaces_safe(output, col, text_start) < 0)
-        return -1;
-      if (print_bytes(output, text, text_len) < 0)
-        return -1;
-      col = text_end;
-      text_printed = true;
-    }
-
-    if (right_note && !right_drawn && right_box_start <= pos) {
-      if (render_inline_note_line(output, &col, right_box_start, right_box_end,
-                                  right_left_edge, right_right_edge,
-                                  right_h_line, NULL, 0) < 0)
-        return -1;
-      right_drawn = true;
-      while (i + 1 < d->participant_count &&
-             layout->positions[i + 1] < right_box_end)
-        i++;
-      if (pos < right_box_end)
-        continue;
-    }
-
-    if (pos >= text_start && pos < text_end) {
-      continue;
-    }
-
-    if (print_spaces_safe(output, col, pos) < 0)
-      return -1;
-    if (fputs(chars->life_v, output) == EOF)
-      return -1;
-    col = pos + 1;
-  }
-
-  if (left_note && !left_drawn) {
-    if (render_inline_note_line(output, &col, left_box_start, left_box_end,
-                                left_edge, left_right_edge, left_h_line, NULL,
-                                0) < 0)
-      return -1;
-  }
-  if (right_note && !right_drawn) {
-    if (render_inline_note_line(output, &col, right_box_start, right_box_end,
-                                right_left_edge, right_right_edge, right_h_line,
-                                NULL, 0) < 0)
-      return -1;
-  }
-  if (!text_printed) {
-    if (print_spaces_safe(output, col, text_start) < 0)
-      return -1;
-    if (print_bytes(output, text, text_len) < 0)
-      return -1;
-  }
-
-  if (fputc('\n', output) == EOF)
-    return -1;
-  return 0;
-}
-
-static int render_message(FILE *output, Diagram *d, Layout *layout, Message *m,
-                          const RenderChars *chars) {
-  size_t from_pos = layout->positions[m->from_idx];
-  size_t to_pos = layout->positions[m->to_idx];
-
-  if (m->is_self) {
-    return render_self_message(output, d, layout, m, chars);
-  }
-
-  bool left_to_right = from_pos < to_pos;
-  size_t left_pos = left_to_right ? from_pos : to_pos;
-  size_t right_pos = left_to_right ? to_pos : from_pos;
-
-  size_t line_width = right_pos - left_pos - 1;
+static void draw_self_message(Canvas *c, Layout *layout, Message *m, size_t y,
+                              const RenderChars *chars) {
+  size_t pos = layout->positions[m->from_idx];
+  size_t loop_width = max_line_width(m->text) + NOTE_BOX_EXTRA;
   size_t num_lines = count_lines(m->text);
 
-  Note *left_note = NULL;
-  Note *right_note = NULL;
+  bool is_dashed = arrow_is_dashed(m->arrow);
+  bool is_x = arrow_is_x(m->arrow);
+  const char *line_char = is_dashed ? chars->line_dashed : chars->line_solid;
+  const char *arrow_char =
+      is_dashed ? chars->arrow_left_dashed
+                : (is_x ? chars->arrow_left_x : chars->arrow_left);
 
-  if (m->inline_left_note_idx != (size_t)-1) {
-    left_note = &d->notes[m->inline_left_note_idx];
-  }
-  if (m->inline_right_note_idx != (size_t)-1) {
-    right_note = &d->notes[m->inline_right_note_idx];
-  }
-
-  size_t left_box_start = 0;
-  size_t left_box_end = 0;
-  size_t right_box_start = 0;
-  size_t right_box_end = 0;
-
-  if (left_note) {
-    size_t note_width = left_note->max_line_width + 2;
-    size_t box_width = note_width + 2;
-    left_box_start = left_pos > box_width + 2 ? left_pos - box_width - 2 : 0;
-    left_box_end = left_box_start + box_width;
-  }
-
-  if (right_note) {
-    size_t note_width = right_note->max_line_width + 2;
-    size_t box_width = note_width + 2;
-    right_box_start = right_pos + 2;
-    right_box_end = right_box_start + box_width;
-  }
-
-  size_t col = 0;
-  for (size_t i = 0; i < d->participant_count; i++) {
-    size_t pos = layout->positions[i];
-    if (print_spaces_safe(output, col, pos) < 0)
-      return -1;
-    if (fputs(chars->life_v, output) == EOF)
-      return -1;
-    col = pos + 1;
-  }
-  if (fputc('\n', output) == EOF)
-    return -1;
+  size_t cur_y = y;
 
   for (size_t ln = 0; ln < num_lines; ln++) {
     size_t text_len;
     const char *text = get_line(m->text, ln, &text_len);
-    size_t text_width = utf8_display_width_n(text, text_len);
-    size_t msg_pad =
-        (line_width > text_width) ? (line_width - text_width) / 2 : 0;
-    size_t text_start = left_pos + 1 + msg_pad;
-    size_t text_end = text_start + text_width;
-    bool draw_top = (ln + 1 == num_lines);
-
-    if (m->inline_left_note_idx == (size_t)-1 &&
-        m->inline_right_note_idx == (size_t)-1) {
-      col = 0;
-      bool text_printed = false;
-      for (size_t i = 0; i < d->participant_count; i++) {
-        size_t pos = layout->positions[i];
-        if (!text_printed && text_start <= pos) {
-          if (print_spaces_safe(output, col, text_start) < 0)
-            return -1;
-          if (print_bytes(output, text, text_len) < 0)
-            return -1;
-          col = text_end;
-          text_printed = true;
-        }
-        if (pos >= text_start && pos < text_end) {
-          continue;
-        }
-        if (print_spaces_safe(output, col, pos) < 0)
-          return -1;
-        if (fputs(chars->life_v, output) == EOF)
-          return -1;
-        col = pos + 1;
-      }
-      if (!text_printed) {
-        if (print_spaces_safe(output, col, text_start) < 0)
-          return -1;
-        if (print_bytes(output, text, text_len) < 0)
-          return -1;
-      }
-      if (fputc('\n', output) == EOF)
-        return -1;
-      continue;
-    }
-
-    if (render_message_text_line(
-            output, d, layout, chars, text, text_len, text_start, text_end,
-            draw_top ? left_note : false, left_box_start, left_box_end,
-            draw_top ? chars->note_tl : chars->box_v,
-            draw_top ? chars->note_tr : chars->box_v,
-            draw_top ? chars->note_th : chars->box_h,
-            draw_top ? right_note : false, right_box_start, right_box_end,
-            draw_top ? chars->note_tl : chars->box_v,
-            draw_top ? chars->note_tr : chars->box_v,
-            draw_top ? chars->note_th : chars->box_h) < 0)
-      return -1;
+    canvas_puts_n(c, pos + SELF_MSG_TEXT_OFFSET, cur_y, text, text_len);
+    cur_y++;
   }
 
-  bool is_dashed = (m->arrow == ARROW_DASHED || m->arrow == ARROW_DASHED_LEFT);
-  bool is_open = (m->arrow == ARROW_OPEN || m->arrow == ARROW_OPEN_LEFT);
-  bool is_x = (m->arrow == ARROW_X || m->arrow == ARROW_X_LEFT);
+  size_t loop_end = pos + 1 + loop_width;
+  canvas_put(c, pos, cur_y, chars->life_branch_left);
+  canvas_hline(c, pos + 1, loop_end - 1, cur_y, line_char);
+  canvas_put(c, loop_end, cur_y, chars->box_tr);
+  cur_y++;
+
+  canvas_put(c, loop_end, cur_y, chars->loop_v);
+  cur_y++;
+
+  canvas_put(c, pos, cur_y, arrow_char);
+  canvas_hline(c, pos + 1, loop_end - 1, cur_y, line_char);
+  canvas_put(c, loop_end, cur_y, chars->box_br);
+}
+
+static void draw_inline_note(Canvas *c, Note *note, size_t anchor_pos,
+                             bool is_left, size_t arrow_y,
+                             const RenderChars *chars) {
+  size_t box_width = note->max_line_width + NOTE_BOX_EXTRA;
+  size_t box_start = is_left ? (anchor_pos > box_width + LIFELINE_GAP
+                                    ? anchor_pos - box_width - LIFELINE_GAP
+                                    : 0)
+                             : anchor_pos + 1 + LIFELINE_GAP;
+  size_t box_end = box_start + box_width;
+  size_t inner = box_width - 2;
+
+  size_t top_y = arrow_y - 1;
+  canvas_put(c, box_start, top_y, chars->note_tl);
+  canvas_hline(c, box_start + 1, box_end - 2, top_y, chars->note_th);
+  canvas_put(c, box_end - 1, top_y, chars->note_tr);
+
+  canvas_put(c, box_start, arrow_y, chars->box_v);
+  canvas_put(c, box_end - 1, arrow_y, chars->box_v);
+  size_t text_len = 0;
+  const char *text = get_line(note->text, 0, &text_len);
+  if (text) {
+    size_t tw = utf8_display_width_n(text, text_len);
+    size_t pad = (inner > tw) ? (inner - tw) / 2 : 0;
+    canvas_puts_n(c, box_start + 1 + pad, arrow_y, text, text_len);
+  }
+
+  for (size_t ln = 1; ln < note->line_count; ln++) {
+    size_t row = arrow_y + ln;
+    canvas_put(c, box_start, row, chars->box_v);
+    canvas_put(c, box_end - 1, row, chars->box_v);
+
+    text = get_line(note->text, ln, &text_len);
+    if (text) {
+      size_t tw = utf8_display_width_n(text, text_len);
+      size_t pad = (inner > tw) ? (inner - tw) / 2 : 0;
+      canvas_puts_n(c, box_start + 1 + pad, row, text, text_len);
+    }
+  }
+
+  size_t bottom = arrow_y + note->line_count;
+  canvas_put(c, box_start, bottom, chars->note_bl);
+  canvas_hline(c, box_start + 1, box_end - 2, bottom, chars->box_h);
+  canvas_put(c, box_end - 1, bottom, chars->note_br);
+}
+
+static void draw_message(Canvas *c, Diagram *d, Layout *layout, Message *m,
+                         size_t y, const RenderChars *chars) {
+  if (m->is_self) {
+    draw_self_message(c, layout, m, y, chars);
+    return;
+  }
+
+  size_t from_pos = layout->positions[m->from_idx];
+  size_t to_pos = layout->positions[m->to_idx];
+  bool left_to_right = from_pos < to_pos;
+  size_t left_pos = left_to_right ? from_pos : to_pos;
+  size_t right_pos = left_to_right ? to_pos : from_pos;
+  size_t line_width = right_pos - left_pos - 1;
+
+  bool is_dashed = arrow_is_dashed(m->arrow);
   const char *line_char = is_dashed ? chars->line_dashed : chars->line_solid;
-  const char *arrow_char;
+  const char *arrow_char = select_arrow_char(chars, m->arrow, left_to_right);
+
+  size_t num_lines = count_lines(m->text);
+  size_t cur_y = y;
+
+  for (size_t ln = 0; ln < num_lines; ln++) {
+    size_t text_len;
+    const char *text = get_line(m->text, ln, &text_len);
+    size_t tw = utf8_display_width_n(text, text_len);
+    size_t pad = (line_width > tw) ? (line_width - tw) / 2 : 0;
+    canvas_puts_n(c, left_pos + 1 + pad, cur_y, text, text_len);
+    cur_y++;
+  }
+
+  size_t arrow_y = cur_y;
   size_t line_span = line_width > 1 ? line_width - 1 : 0;
 
   if (left_to_right) {
-    if (is_dashed) {
-      arrow_char = chars->arrow_right_dashed;
-    } else if (is_open) {
-      arrow_char = chars->arrow_right_open;
-    } else if (is_x) {
-      arrow_char = chars->arrow_right_x;
-    } else {
-      arrow_char = chars->arrow_right;
-    }
+    canvas_put(c, from_pos, arrow_y, chars->life_branch_left);
+    if (line_span > 0)
+      canvas_hline(c, from_pos + 1, from_pos + line_span, arrow_y, line_char);
+    canvas_put(c, from_pos + line_span + 1, arrow_y, arrow_char);
   } else {
-    if (is_dashed) {
-      arrow_char = chars->arrow_left_dashed;
-    } else if (is_open) {
-      arrow_char = chars->arrow_left_open;
-    } else if (is_x) {
-      arrow_char = chars->arrow_left_x;
-    } else {
-      arrow_char = chars->arrow_left;
-    }
+    canvas_put(c, to_pos + 1, arrow_y, arrow_char);
+    if (line_span > 0)
+      canvas_hline(c, to_pos + 2, to_pos + 1 + line_span, arrow_y, line_char);
+    canvas_put(c, from_pos, arrow_y, chars->life_branch_right);
   }
 
-  if (m->inline_left_note_idx == (size_t)-1 &&
-      m->inline_right_note_idx == (size_t)-1) {
-    col = 0;
-    for (size_t i = 0; i < d->participant_count; i++) {
-      size_t pos = layout->positions[i];
-      if (print_spaces_safe(output, col, pos) < 0)
-        return -1;
-
-      if (left_to_right) {
-        if (pos == from_pos) {
-          if (fputs(chars->life_branch_left, output) == EOF)
-            return -1;
-
-          if (line_span > 0) {
-            if (print_repeat(output, line_char, line_span) < 0)
-              return -1;
-          }
-          if (fputs(arrow_char, output) == EOF)
-            return -1;
-          col = right_pos;
-          while (i + 1 < d->participant_count &&
-                 layout->positions[i + 1] < right_pos)
-            i++;
-        } else {
-          if (fputs(chars->life_v, output) == EOF)
-            return -1;
-          col = pos + 1;
-        }
-      } else {
-        if (pos == left_pos) {
-          if (fputs(chars->life_v, output) == EOF)
-            return -1;
-          if (fputs(arrow_char, output) == EOF)
-            return -1;
-          if (line_span > 0) {
-            if (print_repeat(output, line_char, line_span) < 0)
-              return -1;
-          }
-          if (fputs(chars->life_branch_right, output) == EOF)
-            return -1;
-          col = right_pos + 1;
-          while (i + 1 < d->participant_count &&
-                 layout->positions[i + 1] <= right_pos)
-            i++;
-        } else {
-          if (fputs(chars->life_v, output) == EOF)
-            return -1;
-          col = pos + 1;
-        }
-      }
-    }
-    if (fputc('\n', output) == EOF)
-      return -1;
-    return 0;
+  if (m->inline_left_note_idx != INVALID_INDEX) {
+    draw_inline_note(c, &d->notes[m->inline_left_note_idx], left_pos, true,
+                     arrow_y, chars);
   }
-
-  size_t left_note_len = 0;
-  size_t right_note_len = 0;
-  const char *left_note_text =
-      left_note ? get_line(left_note->text, 0, &left_note_len) : NULL;
-  const char *right_note_text =
-      right_note ? get_line(right_note->text, 0, &right_note_len) : NULL;
-
-  if (render_inline_row(output, d, layout, chars, true, left_to_right, from_pos,
-                        left_pos, right_pos, line_char, arrow_char, line_span,
-                        left_note, left_box_start, left_box_end, chars->box_v,
-                        chars->box_v, chars->box_h, left_note_text,
-                        left_note_len, right_note, right_box_start,
-                        right_box_end, chars->box_v, chars->box_v, chars->box_h,
-                        right_note_text, right_note_len) < 0)
-    return -1;
-
-  size_t remaining = 0;
-  if (left_note && left_note->line_count > remaining)
-    remaining = left_note->line_count;
-  if (right_note && right_note->line_count > remaining)
-    remaining = right_note->line_count;
-
-  for (size_t ln = 1; ln <= remaining; ln++) {
-    const char *left_text = NULL;
-    const char *right_text = NULL;
-    size_t left_len = 0;
-    size_t right_len = 0;
-    const char *left_edge = NULL;
-    const char *left_right_edge = NULL;
-    const char *left_h_line = chars->box_h;
-    const char *right_left_edge = NULL;
-    const char *right_right_edge = NULL;
-    const char *right_h_line = chars->box_h;
-    bool draw_left = left_note && ln <= left_note->line_count;
-    bool draw_right = right_note && ln <= right_note->line_count;
-
-    if (draw_left) {
-      if (ln < left_note->line_count) {
-        left_text = get_line(left_note->text, ln, &left_len);
-        left_edge = chars->box_v;
-        left_right_edge = chars->box_v;
-      } else {
-        left_edge = chars->note_bl;
-        left_right_edge = chars->note_br;
-      }
-    }
-
-    if (draw_right) {
-      if (ln < right_note->line_count) {
-        right_text = get_line(right_note->text, ln, &right_len);
-        right_left_edge = chars->box_v;
-        right_right_edge = chars->box_v;
-      } else {
-        right_left_edge = chars->note_bl;
-        right_right_edge = chars->note_br;
-      }
-    }
-
-    if (render_inline_row(
-            output, d, layout, chars, false, left_to_right, from_pos, left_pos,
-            right_pos, line_char, arrow_char, line_span, draw_left,
-            left_box_start, left_box_end, left_edge ? left_edge : chars->box_v,
-            left_right_edge ? left_right_edge : chars->box_v, left_h_line,
-            left_text, left_len, draw_right, right_box_start, right_box_end,
-            right_left_edge ? right_left_edge : chars->box_v,
-            right_right_edge ? right_right_edge : chars->box_v, right_h_line,
-            right_text, right_len) < 0)
-      return -1;
+  if (m->inline_right_note_idx != INVALID_INDEX) {
+    draw_inline_note(c, &d->notes[m->inline_right_note_idx], right_pos, false,
+                     arrow_y, chars);
   }
-  return 0;
 }
 
 bool render_diagram(Diagram *d, RenderMode mode, FILE *output) {
@@ -1175,42 +658,30 @@ bool render_diagram(Diagram *d, RenderMode mode, FILE *output) {
   if (!layout)
     return false;
 
-  if (render_header_top(output, d, layout, chars) < 0)
-    goto render_error;
-  if (render_header_name(output, d, layout, chars) < 0)
-    goto render_error;
-  if (render_header_bottom(output, d, layout, chars) < 0)
-    goto render_error;
+  Canvas *canvas = canvas_new(layout->total_width, layout->total_height);
+  if (!canvas) {
+    layout_free(layout);
+    return false;
+  }
 
-  if (render_lifeline(output, d, layout, chars) < 0)
-    goto render_error;
-  if (render_lifeline(output, d, layout, chars) < 0)
-    goto render_error;
+  draw_lifelines(canvas, d, layout, chars);
+  draw_header(canvas, d, layout, chars);
 
   for (size_t i = 0; i < d->event_count; i++) {
     DiagramEvent *event = &d->events[i];
+    size_t y = layout->event_y[i];
+
     if (event->type == EVENT_MESSAGE) {
-      if (render_message(output, d, layout, &d->messages[event->index], chars) <
-          0)
-        goto render_error;
+      draw_message(canvas, d, layout, &d->messages[event->index], y, chars);
     } else {
-      if (render_note(output, d, layout, &d->notes[event->index], chars) < 0)
-        goto render_error;
+      draw_note_box(canvas, layout, &d->notes[event->index], y, chars);
     }
   }
 
-  for (int i = 0; i < 5; i++) {
-    if (render_lifeline(output, d, layout, chars) < 0)
-      goto render_error;
-  }
+  int result = canvas_print(canvas, output);
 
-  if (fputc('\n', output) == EOF)
-    goto render_error;
-
+  canvas_free(canvas);
   layout_free(layout);
-  return true;
 
-render_error:
-  layout_free(layout);
-  return false;
+  return result == 0;
 }
