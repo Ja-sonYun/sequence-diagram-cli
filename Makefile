@@ -1,5 +1,5 @@
 CC = gcc
-VERSION = 2.0.3
+VERSION = 2.0.4
 CFLAGS = -Wall -Wextra -O2 -std=c11 -D_XOPEN_SOURCE=700 -DSEQDIA_VERSION="\"$(VERSION)\""
 
 # Main binary

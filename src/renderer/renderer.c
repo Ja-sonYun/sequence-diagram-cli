@@ -93,7 +93,7 @@ static const RenderChars ASCII_CHARS = {
 };
 
 enum {
-  BOX_PADDING = 1,
+  BOX_PADDING = 2,
   MIN_BOX_WIDTH = 3,
   BASE_GAP = 1,
   MSG_PADDING = 2,
@@ -207,7 +207,7 @@ static void expand_gaps(Layout *layout, size_t left, size_t right,
       layout->gaps[j] += per_gap + (j - left < remainder ? 1 : 0);
     }
   } else {
-    layout->widths[left] += extra * 2;
+    layout->gaps[left] += extra;
   }
 }
 
